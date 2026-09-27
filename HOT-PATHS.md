@@ -84,3 +84,48 @@ zeroed per worker before the first packet. On the Linux benchmark that is 81% of
 all instructions recorded before the pool was capped. The mobile preset caps
 `budget_bytes` at 24 MB, so phones are not affected, but the Linux default is
 worth a second look.
+
+
+## Update: the FlowKey zero-fill, and what it taught
+
+`FlowKey.fromPacket` started from `.{ .proto = ..., .v6 = ... }`, whose defaults
+are `@splat(0)` for both address arrays, so it cleared 32 bytes and then copied 4
+of them into each half for IPv4. The callgrind site resolver, added in
+`scripts/callgrind_sites.py`, put the profile's once-per-packet `memset` exactly
+there: `parse.zig`, reached from `tcp.zig`.
+
+Writing the bytes instead of clearing then filling removed it.
+
+| per packet | before | after |
+|---|---:|---:|
+| `memset` calls | 1.001 | 0.001 |
+| `memcpy` calls | 2.813 | 0.766 |
+| `memset` Ir | 62.0 | 2.0 |
+| `memcpy` Ir | 108.6 | 17.5 |
+| **total self Ir** | **1729.6** | **1560.1** |
+
+That is 9.8 percent fewer user-space instructions per packet, measured by
+instruction count and therefore independent of the runner's two performance
+states. The micro-benchmark agrees: `parse/ipv4-tcp+flowkey` 44.78 ns to 26.42 ns,
+-41.0 percent, paired over five interleaved rounds, with the golden digest gate
+reporting zero mismatches, so the forty bytes of every key are unchanged.
+
+**The end-to-end netns benchmark shows nothing.** No scenario moved outside the
+run-to-run variance, and one cell reported 39 percent spread, which is the
+machine changing state mid-run rather than a result.
+
+## The conclusion this forces
+
+A 9.8 percent cut in user-space instructions and a 41 percent cut in the cost of
+building a flow key produced no measurable throughput change. Together with the
+earlier observation that callgrind cannot see kernel time, this says the
+end-to-end throughput of this stack on this workload is **not limited by
+user-space instruction count**.
+
+That closes off the whole class of approach this file exists to enable. More
+SIMD in the parse path, a cheaper hash, narrower structs, a faster state machine:
+all of it reduces instructions, and instructions are demonstrably not the
+constraint. The place to look instead is the side a user-space profile cannot
+observe, namely the cost of the syscalls themselves, and the only reliable way to
+attack that is to measure kernel time directly, with `perf` rather than
+callgrind, or by counting and timing the syscalls per packet.
