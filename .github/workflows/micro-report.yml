@@ -3,9 +3,17 @@ name: micro-report
 on:
   workflow_dispatch:
     inputs:
+      base:
+        description: Commit to compare against
+        default: "5620e57"
+        required: false
+      rounds:
+        description: Interleaved base/candidate rounds
+        default: "3"
+        required: false
       args:
-        description: Extra arguments passed to the micro benchmark
-        default: "--min-ms 600 --reps 5"
+        description: Extra arguments passed to the candidate benchmark
+        default: "--min-ms 600 --reps 1"
         required: false
   push:
     branches: [bench/hardened]
@@ -14,6 +22,7 @@ on:
       - "src/flow/**"
       - "src/bench/**"
       - "build.zig"
+      - "scripts/bench_compare.py"
       - ".github/workflows/micro-report.yml"
 
 permissions:
@@ -31,20 +40,53 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: mlugg/setup-zig@v2
         with:
           version: ${{ env.ZIG_VERSION }}
 
-      - name: run micro benchmarks
+      - name: build base and candidate
+        run: |
+          set -eux
+          git worktree add "$RUNNER_TEMP/base" "${{ inputs.base || '5620e57' }}"
+          cd "$RUNNER_TEMP/base"
+          zig build -Doptimize=ReleaseFast
+          cd "$GITHUB_WORKSPACE"
+          zig build -Doptimize=ReleaseFast
+
+      - name: paired interleaved runs
         run: |
           set +e
-          zig build bench -Doptimize=ReleaseFast -- ${{ inputs.args || '--min-ms 600 --reps 5' }} 2>&1 | tee "$RUNNER_TEMP/bench.log"
-          printf 'bench_exit=%s\n' "${PIPESTATUS[0]}" | tee -a "$RUNNER_TEMP/bench.log"
+          : > "$RUNNER_TEMP/base.txt"
+          : > "$RUNNER_TEMP/cand.txt"
+          base_bin="$RUNNER_TEMP/base/zig-out/bin/zeptun-bench"
+          cand_bin="$GITHUB_WORKSPACE/zig-out/bin/zeptun-bench"
+          for i in $(seq 1 ${{ inputs.rounds || '3' }}); do
+            "$base_bin" micro --min-ms 600 --json "$RUNNER_TEMP/base-$i.json" >> "$RUNNER_TEMP/base.txt" 2>&1
+            "$cand_bin" micro ${{ inputs.args || '--min-ms 600 --reps 1' }} --json "$RUNNER_TEMP/cand-$i.json" >> "$RUNNER_TEMP/cand.txt" 2>&1
+          done
+          cat "$RUNNER_TEMP/base.txt" "$RUNNER_TEMP/cand.txt" > "$RUNNER_TEMP/bench.log"
+          exit 0
+
+      - name: compare
+        if: always()
+        run: |
+          set +e
+          b=$(ls "$RUNNER_TEMP"/base-*.json 2> /dev/null | paste -sd, -)
+          c=$(ls "$RUNNER_TEMP"/cand-*.json 2> /dev/null | paste -sd, -)
+          if [ -n "$b" ] && [ -n "$c" ]; then
+            python3 scripts/bench_compare.py "$b" "$c" "$RUNNER_TEMP/compare.md" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "missing result files: b=$b c=$c" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
           exit 0
 
       - name: summary
         if: always()
-        run: cat zig-out/bench/micro.md >> "$GITHUB_STEP_SUMMARY" || true
+        run: |
+          cat "$RUNNER_TEMP/compare.md" >> "$GITHUB_STEP_SUMMARY" 2> /dev/null || true
+          cat zig-out/bench/micro.md >> "$GITHUB_STEP_SUMMARY" 2> /dev/null || true
 
       - name: publish to ci-micro branch
         if: always()
@@ -58,9 +100,11 @@ jobs:
           cd "$dest"
           git checkout -q -b ci-micro
           mkdir -p out
+          cp "$RUNNER_TEMP/compare.md" out/ 2> /dev/null || true
           cp "$RUNNER_TEMP/bench.log" out/ 2> /dev/null || true
           cp "$GITHUB_WORKSPACE/zig-out/bench/micro.md" out/ 2> /dev/null || true
-          cp "$GITHUB_WORKSPACE/zig-out/bench/micro.json" out/ 2> /dev/null || true
+          cp "$RUNNER_TEMP"/base-*.json out/ 2> /dev/null || true
+          cp "$RUNNER_TEMP"/cand-*.json out/ 2> /dev/null || true
           printf 'sha %s\n' "$GITHUB_SHA" > out/sha.txt
           git add -A
           git -c user.name=github-actions[bot] \
