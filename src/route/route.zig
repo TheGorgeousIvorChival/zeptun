@@ -107,7 +107,12 @@ pub fn applyRoutes(cfg: *const config.Config, ifname: []const u8, state: *State)
             .include_extra = cfg.route.include_extra,
             .exclude_extra = cfg.route.exclude_extra,
             .strict = cfg.route.strict,
-            .dns_to_tunnel = cfg.dns.hijack,
+            // Force port 53 into the tunnel whenever the stack is doing
+            // anything with DNS. Keyed off hijack alone, a fake-ip-only config
+            // left UDP/53 to a main-table route more specific than the default,
+            // so the query left the host, the client got a real record and the
+            // proxy only ever saw an address.
+            .dns_to_tunnel = cfg.dns.hijack or cfg.dns.fake_ip,
             .excluded_uids = uid_pairs[0..uids.len],
             .include_interfaces = inc_if[0..cfg.route.include_interfaces.len],
             .exclude_interfaces = exc_if[0..cfg.route.exclude_interfaces.len],
@@ -118,6 +123,16 @@ pub fn applyRoutes(cfg: *const config.Config, ifname: []const u8, state: *State)
         if (resolved.supported and ifname.len < state.ifname.len) {
             @memcpy(state.ifname[0..ifname.len], ifname);
             state.resolved = resolved.apply(cfg, ifname);
+            // The in-stack hijack can only see packets that arrive on the tun
+            // device. On a systemd-resolved host the client resolver is
+            // 127.0.0.53, which the kernel answers out of its local table
+            // before any policy rule, so a query to it never reaches us. If this
+            // handover did not happen, the client keeps using the real resolver,
+            // gets real records, and the proxy only ever sees IPs -- which is
+            // exactly the leak the fake-ip mode exists to prevent. Say so.
+            if (!state.resolved and cfg.dnsActive()) {
+                log.warn("route: systemd-resolved handover failed; DNS queries will leave this host over its real resolver and fake-ip will not be used", .{});
+            }
         }
         return;
     }

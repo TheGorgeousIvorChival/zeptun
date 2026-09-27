@@ -305,7 +305,10 @@ pub const Netlink = struct {
             b.attrU32(FRA_FWMASK, spec.fwmask);
         }
         if (spec.suppress_prefixlen) |s| b.attrU32(FRA_SUPPRESS_PREFIXLEN, s);
-        if (spec.uid_range) |r| b.attr(FRA_UID_RANGE, std.mem.sliceAsBytes(&r));
+        if (spec.uid_range) |r| {
+            const e = encodeUidRange(r);
+            b.attr(FRA_UID_RANGE, &e);
+        }
         if (spec.iif) |name| {
             var z: [17]u8 = @splat(0);
             const l = @min(name.len, 15);
@@ -313,10 +316,30 @@ pub const Netlink = struct {
             b.attr(FRA_IIFNAME, z[0 .. l + 1]);
         }
         if (spec.dport) |p| {
-            const range = [2]u16{ p, p };
-            b.attr(FRA_DPORT_RANGE, std.mem.sliceAsBytes(&range));
+            const e = encodeDport(p);
+            b.attr(FRA_DPORT_RANGE, &e);
         }
         return n.transact(b.finish());
+    }
+
+    /// The kernel's struct fib_rule_port_range is { __be16 low; __be16 high; }
+    /// and fib_nl2rule reads it with ntohs(). Writing native-endian bytes makes
+    /// the kernel see the port byte-swapped -- 53 arrives as 0x3500, 13568 --
+    /// so a rule meant to pin DNS into the tunnel silently matches nothing.
+    pub fn encodeDport(p: u16) [4]u8 {
+        return .{ @truncate(p >> 8), @truncate(p), @truncate(p >> 8), @truncate(p) };
+    }
+
+    /// struct fib_rule_uid_range is { __be32 start; __be32 end; } and the kernel
+    /// converts with be32_to_cpu(). Same problem: native-endian bytes arrive
+    /// swapped, which either makes the kernel reject the rule with EINVAL or,
+    /// on a kernel too old to know the attribute, makes it an unconditional
+    /// rule that captures everything.
+    pub fn encodeUidRange(r: [2]u32) [8]u8 {
+        var out: [8]u8 = undefined;
+        std.mem.writeInt(u32, out[0..4], r[0], .big);
+        std.mem.writeInt(u32, out[4..8], r[1], .big);
+        return out;
     }
 
     pub fn flushThrowRoutes(n: *Netlink, table: u32) void {
@@ -644,7 +667,13 @@ fn installAutoRoute(nl: *Netlink, index: u32, ar: AutoRoute, applied: *Applied) 
     const families = [_]bool{ false, true };
     for (families) |v6| {
         const enabled = if (v6) ar.ipv6 else ar.ipv4;
-        if (!enabled and !ar.strict) continue;
+        if (!enabled and !ar.strict) {
+            // Nothing is installed for this family, so every packet in it leaves
+            // by the physical interface with the client's real address. strict
+            // would have blocked it instead; say which happened.
+            log.warn("route: {s} is not being tunnelled and strict_route is off, so it leaves by the physical interface", .{if (v6) "ipv6" else "ipv4"});
+            continue;
+        }
         var routed = enabled;
         if (enabled) {
             var any_include = false;
@@ -730,4 +759,45 @@ test "netlink message layout" {
     try std.testing.expectEqual(@sizeOf(RtMsg), 12);
     try std.testing.expectEqual(@sizeOf(FibRuleHdr), 12);
     try std.testing.expectEqual(@sizeOf(IfInfoMsg), 16);
+}
+
+fn kernelReadsBe16(b: [2]u8) u16 {
+    return std.mem.readInt(u16, &b, .big);
+}
+
+fn kernelReadsBe32(b: [4]u8) u32 {
+    return std.mem.readInt(u32, &b, .big);
+}
+
+test "rule port and uid ranges are encoded big endian, the way the kernel reads them" {
+    // The kernel applies ntohs() to fib_rule_port_range and be32_to_cpu() to
+    // fib_rule_uid_range. Decode the way it does and the values come back.
+    const ports = [_]u16{ 53, 443, 853, 1, 65535 };
+    for (ports) |p| {
+        const e = Netlink.encodeDport(p);
+        try std.testing.expectEqual(p, kernelReadsBe16(e[0..2].*));
+        try std.testing.expectEqual(p, kernelReadsBe16(e[2..4].*));
+    }
+    // Exactly what goes on the wire, and what the kernel therefore sees.
+    try std.testing.expectEqual([4]u8{ 0x00, 0x35, 0x00, 0x35 }, Netlink.encodeDport(53));
+
+    // What the old code produced: the port in host byte order. The kernel runs
+    // ntohs() over it and gets 13568, so the rule meant to pin port 53 into the
+    // tunnel matched 13568 instead and every real DNS query fell through to the
+    // main table and out of the physical interface.
+    const port: u16 = 53;
+    const as_written_before = std.mem.asBytes(&port);
+    try std.testing.expectEqual(@as(u16, 13568), std.mem.readInt(u16, as_written_before, .big));
+    // A port with both bytes set makes the swap unmistakable.
+    const v: u16 = 0x1234;
+    try std.testing.expectEqual(@as(u16, 0x3412), std.mem.readInt(u16, std.mem.asBytes(&v), .big));
+    const vbytes = Netlink.encodeDport(v);
+    try std.testing.expectEqual(v, kernelReadsBe16(.{ vbytes[0], vbytes[1] }));
+
+    const ranges = [_][2]u32{ .{ 0, 0 }, .{ 1000, 1999 }, .{ 0x0100_0000, 0x7fff_ffff } };
+    for (ranges) |r| {
+        const e = Netlink.encodeUidRange(r);
+        try std.testing.expectEqual(r[0], kernelReadsBe32(e[0..4].*));
+        try std.testing.expectEqual(r[1], kernelReadsBe32(e[4..8].*));
+    }
 }
