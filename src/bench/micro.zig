@@ -19,6 +19,8 @@ pub const Result = struct {
     ops_per_sec: f64,
     mb_per_sec: f64,
     bytes_per_op: u64,
+    ns_per_op_spread_pct: f64 = 0,
+    digest: u64 = 0,
 };
 
 pub const Options = struct {
@@ -29,31 +31,72 @@ pub const Options = struct {
     baseline_path: ?[]const u8 = null,
     max_regression_pct: f64 = 15.0,
     filter: ?[]const u8 = null,
+    reps: u32 = 5,
+    update_golden: bool = false,
+    allow_debug: bool = false,
 };
+
+pub const BuildMode = @tagName(builtin.mode);
 
 const Runner = struct {
     allocator: std.mem.Allocator,
     results: std.ArrayList(Result) = .empty,
     opts: Options,
+    identity_failures: u32 = 0,
 
-    fn run(r: *Runner, group: []const u8, name: []const u8, bytes_per_op: u64, ctx: anytype, comptime f: fn (@TypeOf(ctx)) void) !void {
-        if (r.opts.filter) |flt| {
-            if (std.mem.indexOf(u8, name, flt) == null) return;
-        }
+    fn sampleOnce(ctx: anytype, comptime f: fn (@TypeOf(ctx)) void, min_ns: u64) f64 {
         var warm: u32 = 0;
         while (warm < 1000) : (warm += 1) f(ctx);
         var iterations: u64 = 0;
         var batch: u64 = 64;
         const start = sys.monotonicNs();
         var elapsed: u64 = 0;
-        while (elapsed < r.opts.min_ns) {
+        while (elapsed < min_ns) {
             var i: u64 = 0;
             while (i < batch) : (i += 1) f(ctx);
             iterations += batch;
             elapsed = sys.monotonicNs() - start;
-            if (elapsed < r.opts.min_ns / 8) batch *= 2;
+            if (elapsed < min_ns / 8) batch *= 2;
         }
-        const ns_per_op = @as(f64, @floatFromInt(elapsed)) / @as(f64, @floatFromInt(iterations));
+        return @as(f64, @floatFromInt(elapsed)) / @as(f64, @floatFromInt(iterations));
+    }
+
+    fn run(
+        r: *Runner,
+        group: []const u8,
+        name: []const u8,
+        bytes_per_op: u64,
+        ctx: anytype,
+        comptime f: fn (@TypeOf(ctx)) void,
+        comptime digest: ?fn (@TypeOf(ctx)) u64,
+    ) !void {
+        if (r.opts.filter) |flt| {
+            if (std.mem.indexOf(u8, name, flt) == null) return;
+        }
+        var got: u64 = 0;
+        if (digest) |dg| {
+            got = dg(ctx);
+            if (r.opts.update_golden) {
+                std.debug.print("GOLDEN .{{ \"{s}\", 0x{x:0>16} }},\n", .{ name, got });
+            } else if (golden.get(name)) |want| {
+                if (got != want) {
+                    r.identity_failures += 1;
+                    std.debug.print("IDENTITY {s:<40} want 0x{x:0>16} got 0x{x:0>16}\n", .{ name, want, got });
+                } else {
+                    std.debug.print("identity {s:<40} 0x{x:0>16} ok\n", .{ name, got });
+                }
+            }
+        }
+        const samples = try r.allocator.alloc(f64, @max(r.opts.reps, 1));
+        defer r.allocator.free(samples);
+        for (samples) |*s| s.* = sampleOnce(ctx, f, r.opts.min_ns);
+        var best = samples[0];
+        var worst = samples[0];
+        for (samples) |s| {
+            if (s < best) best = s;
+            if (s > worst) worst = s;
+        }
+        const ns_per_op = best;
         const ops = 1e9 / ns_per_op;
         try r.results.append(r.allocator, .{
             .name = name,
@@ -62,12 +105,58 @@ const Runner = struct {
             .ops_per_sec = ops,
             .mb_per_sec = if (bytes_per_op > 0) ops * @as(f64, @floatFromInt(bytes_per_op)) / 1e6 else 0,
             .bytes_per_op = bytes_per_op,
+            .ns_per_op_spread_pct = if (worst > 0) (worst - best) / best * 100.0 else 0,
+            .digest = got,
         });
         std.debug.print("{s:<40} {d:>12.2} ns/op {d:>14.0} ops/s", .{ name, ns_per_op, ops });
         if (bytes_per_op > 0) std.debug.print(" {d:>10.1} MB/s", .{ops * @as(f64, @floatFromInt(bytes_per_op)) / 1e6});
-        std.debug.print("\n", .{});
+        std.debug.print("  [spread {d:.1}%]\n", .{(worst - best) / best * 100.0});
     }
 };
+
+const golden = std.StaticStringMap(u64).initComptime(.{
+    .{ "checksum/scalar/64", 0x6e6710fba79cafa3 },
+    .{ "checksum/simd/64", 0x6e6710fba79cafa3 },
+    .{ "checksum/scalar/128", 0x61785d06f4c3202a },
+    .{ "checksum/simd/128", 0x61785d06f4c3202a },
+    .{ "checksum/scalar/256", 0x2337fa02a75ca72c },
+    .{ "checksum/simd/256", 0x2337fa02a75ca72c },
+    .{ "checksum/scalar/512", 0xc97c051422450f08 },
+    .{ "checksum/simd/512", 0xc97c051422450f08 },
+    .{ "checksum/scalar/1500", 0x1d92ce84cc9dc8b4 },
+    .{ "checksum/simd/1500", 0x1d92ce84cc9dc8b4 },
+    .{ "checksum/scalar/9000", 0x1dfd7c83a0580701 },
+    .{ "checksum/simd/9000", 0x1dfd7c83a0580701 },
+    .{ "checksum/scalar/65535", 0x6bb31eeb4ca62677 },
+    .{ "checksum/simd/65535", 0x6bb31eeb4ca62677 },
+    .{ "parse/ip-only", 0xd6753cdc658ede03 },
+    .{ "parse/ip+tcp", 0xe9a10070233295ea },
+    .{ "parse/+flowkey", 0x32c06f6d6bab1034 },
+    .{ "parse/flowkey-hash", 0x3063ac45aaf34ed8 },
+    .{ "parse/ipv4-tcp+flowkey", 0x12402e5ea08ef373 },
+    .{ "flow-table/lookup-60k", 0xa78fcef817dd7851 },
+    .{ "flow-table/remove+insert-60k", 0xa78fcef817dd7851 },
+    .{ "nat/rewrite-64k-full-csum", 0xbf45fc54d10284dc },
+    .{ "nat/rewrite-64k-partial-csum", 0xe34102ea1cfdc808 },
+    .{ "gso/split-64k-mss1460", 0x16e0da5a494b8072 },
+    .{ "gro/coalesce-40x1460", 0xdddb228852b637e5 },
+});
+
+fn mix(seed: u64, v: u64) u64 {
+    var h = seed ^ (v *% 0xff51_afd7_ed55_8ccd);
+    h ^= h >> 33;
+    h *%= 0xc4ce_b9fe_1a85_ec53;
+    h ^= h >> 29;
+    return h;
+}
+
+fn mixBytes(seed: u64, bytes: []const u8) u64 {
+    var h = seed;
+    var i: usize = 0;
+    while (i + 8 <= bytes.len) : (i += 8) h = mix(h, std.mem.readInt(u64, bytes[i..][0..8], .little));
+    while (i < bytes.len) : (i += 1) h = mix(h, bytes[i]);
+    return h;
+}
 
 const ChecksumCtx = struct {
     data: []const u8,
@@ -80,6 +169,15 @@ const ChecksumCtx = struct {
         });
         std.mem.doNotOptimizeAway(v);
     }
+
+    fn digest(c: *const ChecksumCtx) u64 {
+        const s1 = checksum.finish(checksum.sumScalar(c.data, 0));
+        const s2 = checksum.finish(checksum.sumSimd(c.data, 0));
+        if (s1 != s2) {
+            std.debug.print("scalar/simd divergence on {d} bytes: 0x{x} vs 0x{x}\n", .{ c.data.len, s1, s2 });
+        }
+        return mix(mix(0x5ca1_ab1e, s1), s2);
+    }
 };
 
 const ParseCtx = struct {
@@ -89,6 +187,68 @@ const ParseCtx = struct {
         const p = parse.parse(c.data) catch unreachable;
         const k = parse.FlowKey.fromPacket(c.data, p);
         std.mem.doNotOptimizeAway(k.hash());
+    }
+
+    fn digest(c: *const ParseCtx) u64 {
+        const p = parse.parse(c.data) catch unreachable;
+        const k = parse.FlowKey.fromPacket(c.data, p);
+        return mix(mix(mix(0x9a1e, @as(u64, p.l4_off)), @as(u64, p.payload_len)), k.hash());
+    }
+};
+
+const ParseIpCtx = struct {
+    data: []const u8,
+
+    fn call(c: *const ParseIpCtx) void {
+        const hdr = parse.parseIp(c.data) catch unreachable;
+        std.mem.doNotOptimizeAway(hdr.total_len);
+    }
+
+    fn digest(c: *const ParseIpCtx) u64 {
+        const hdr = parse.parseIp(c.data) catch unreachable;
+        return mix(0x1b1d, @as(u64, hdr.total_len) | (@as(u64, hdr.header_len) << 16) | (@as(u64, hdr.next) << 32));
+    }
+};
+
+const ParseFullCtx = struct {
+    data: []const u8,
+
+    fn call(c: *const ParseFullCtx) void {
+        const p = parse.parse(c.data) catch unreachable;
+        std.mem.doNotOptimizeAway(p.payload_len);
+    }
+
+    fn digest(c: *const ParseFullCtx) u64 {
+        const p = parse.parse(c.data) catch unreachable;
+        return mix(mix(0x2b2e, @as(u64, p.l4_off)), @as(u64, p.payload_len));
+    }
+};
+
+const FlowKeyCtx = struct {
+    data: []const u8,
+    key: parse.FlowKey = .{},
+
+    fn call(c: *FlowKeyCtx) void {
+        const p = parse.parse(c.data) catch unreachable;
+        c.key = parse.FlowKey.fromPacket(c.data, p);
+        std.mem.doNotOptimizeAway(c.key.src[0]);
+    }
+
+    fn digest(c: *FlowKeyCtx) u64 {
+        c.call();
+        return mixBytes(0x3c3f, std.mem.asBytes(&c.key));
+    }
+};
+
+const HashCtx = struct {
+    key: parse.FlowKey,
+
+    fn call(c: *const HashCtx) void {
+        std.mem.doNotOptimizeAway(c.key.hash());
+    }
+
+    fn digest(c: *const HashCtx) u64 {
+        return mix(0x4d40, c.key.hash());
     }
 };
 
@@ -110,6 +270,15 @@ const TableCtx = struct {
             c.t.remove(idx);
             _ = c.t.insert(k, 1) catch unreachable;
         }
+    }
+
+    fn digest(c: *TableCtx) u64 {
+        var h: u64 = 0xc0ffee;
+        for (c.keys[0..256], 0..) |*k, i| {
+            const found = c.t.find(k);
+            h = mix(h, @as(u64, @intFromBool(found != null)) | (@as(u64, if (found) |idx| idx + 1 else 0) << 1) ^ @as(u64, @intCast(i)));
+        }
+        return h;
     }
 };
 
@@ -153,6 +322,11 @@ const NatCtx = struct {
             .dst_port = if (c.flip) 7000 else 443,
         }, c.partial);
     }
+
+    fn digest(c: *NatCtx) u64 {
+        c.call();
+        return mixBytes(0x0a7ec, c.data);
+    }
 };
 
 const SegmentCtx = struct {
@@ -163,6 +337,13 @@ const SegmentCtx = struct {
     fn call(c: *SegmentCtx) void {
         var s = gso.Segmenter.init(c.data, c.vh, false) catch unreachable;
         while (s.next(c.out) catch unreachable) |seg| std.mem.doNotOptimizeAway(seg.len);
+    }
+
+    fn digest(c: *SegmentCtx) u64 {
+        var h: u64 = 0x9e70;
+        var s = gso.Segmenter.init(c.data, c.vh, false) catch unreachable;
+        while (s.next(c.out) catch unreachable) |seg| h = mixBytes(h, seg);
+        return h;
     }
 };
 
@@ -186,6 +367,26 @@ const CoalesceCtx = struct {
             c.p.put(it.buf);
         }
     }
+
+    fn digest(c: *CoalesceCtx) u64 {
+        var co: gso.Coalescer(8) = .{};
+        for (c.segments) |s| {
+            const b = c.p.get().?;
+            @memcpy(b.tail()[0..s.len], s);
+            b.len = @intCast(s.len);
+            switch (co.add(c.p, b)) {
+                .merged, .inserted => {},
+                else => c.p.put(b),
+            }
+        }
+        var h: u64 = 0xc0a1e;
+        for (co.items[0..co.count]) |*it| {
+            const vh = gso.Coalescer(8).finalize(it);
+            h = mix(mixBytes(h, it.buf.bytes()), vh.gso_size);
+            c.p.put(it.buf);
+        }
+        return h;
+    }
 };
 
 fn buildTcp(buf: []u8, payload_len: usize, seq: u32) []u8 {
@@ -207,11 +408,16 @@ fn buildTcp(buf: []u8, payload_len: usize, seq: u32) []u8 {
 }
 
 pub fn runAll(allocator: std.mem.Allocator, io: std.Io, opts: Options) !u8 {
+    if (builtin.mode != .ReleaseFast and !opts.allow_debug) {
+        std.debug.print("refusing to report {s} microbenchmarks: build mode is {s}, expected ReleaseFast\npass --allow-debug to override\n", .{ BuildMode, BuildMode });
+        return 2;
+    }
+    std.debug.print("zeptun-bench micro: {t}-{t} mode={s} zig={s} cpus={d} reps={d} min_ns={d}\n", .{ builtin.cpu.arch, builtin.os.tag, BuildMode, builtin.zig_version_string, sys.cpuCount(), @max(opts.reps, 1), opts.min_ns });
     var r: Runner = .{ .allocator = allocator, .opts = opts };
     defer r.results.deinit(allocator);
     var prng = std.Random.DefaultPrng.init(0xbe7c);
     const rand = prng.random();
-    const sizes = [_]usize{ 64, 512, 1500, 9000, 65535 };
+    const sizes = [_]usize{ 64, 128, 256, 512, 1500, 9000, 65535 };
     const data = try allocator.alloc(u8, 65536);
     defer allocator.free(data);
     rand.bytes(data);
@@ -219,13 +425,22 @@ pub fn runAll(allocator: std.mem.Allocator, io: std.Io, opts: Options) !u8 {
         for ([_]checksum.Impl{ .scalar, .simd }) |impl| {
             const ctx: ChecksumCtx = .{ .data = data[0..sz], .impl = impl };
             const name = try std.fmt.allocPrint(allocator, "checksum/{t}/{d}", .{ impl, sz });
-            try r.run("checksum", name, sz, &ctx, ChecksumCtx.call);
+            try r.run("checksum", name, sz, &ctx, ChecksumCtx.call, ChecksumCtx.digest);
         }
     }
     var pkt_buf: [70000]u8 = undefined;
     const small_pkt = buildTcp(&pkt_buf, 1400, 1);
     const parse_ctx: ParseCtx = .{ .data = small_pkt };
-    try r.run("parse", "parse/ipv4-tcp+flowkey", 0, &parse_ctx, ParseCtx.call);
+    var parse_ip_ctx: ParseIpCtx = .{ .data = small_pkt };
+    try r.run("parse", "parse/ip-only", 0, &parse_ip_ctx, ParseIpCtx.call, ParseIpCtx.digest);
+    var parse_full_ctx: ParseFullCtx = .{ .data = small_pkt };
+    try r.run("parse", "parse/ip+tcp", 0, &parse_full_ctx, ParseFullCtx.call, ParseFullCtx.digest);
+    var flowkey_ctx: FlowKeyCtx = .{ .data = small_pkt };
+    try r.run("parse", "parse/+flowkey", 0, &flowkey_ctx, FlowKeyCtx.call, FlowKeyCtx.digest);
+    const p2 = parse.parse(small_pkt) catch unreachable;
+    const hash_ctx: HashCtx = .{ .key = parse.FlowKey.fromPacket(small_pkt, p2) };
+    try r.run("parse", "parse/flowkey-hash", 0, &hash_ctx, HashCtx.call, HashCtx.digest);
+    try r.run("parse", "parse/ipv4-tcp+flowkey", 0, &parse_ctx, ParseCtx.call, ParseCtx.digest);
 
     var ft = try table.FlowTable(u64).init(allocator, 65536);
     defer ft.deinit(allocator);
@@ -237,31 +452,31 @@ pub fn runAll(allocator: std.mem.Allocator, io: std.Io, opts: Options) !u8 {
         _ = try ft.insert(k.*, i);
     }
     var tctx: TableCtx = .{ .t = &ft, .keys = keys };
-    try r.run("flow", "flow-table/lookup-60k", 0, &tctx, TableCtx.lookup);
-    try r.run("flow", "flow-table/remove+insert-60k", 0, &tctx, TableCtx.churn);
+    try r.run("flow", "flow-table/lookup-60k", 0, &tctx, TableCtx.lookup, TableCtx.digest);
+    try r.run("flow", "flow-table/remove+insert-60k", 0, &tctx, TableCtx.churn, TableCtx.digest);
 
     var bp = try pool.Pool.init(allocator, .{ .count = 64, .buffer_size = 70000 });
     defer bp.deinit();
     var pctx: PoolCtx = .{ .p = &bp };
-    try r.run("pool", "pool/get+put-x16", 0, &pctx, PoolCtx.call);
+    try r.run("pool", "pool/get+put-x16", 0, &pctx, PoolCtx.call, null);
 
     var wheel = timeouts.Wheel.init(1000);
     const timers = try allocator.alloc(timeouts.Timer, 4096);
     defer allocator.free(timers);
     for (timers) |*t| t.* = .{};
     var wctx: WheelCtx = .{ .wheel = &wheel, .timers = timers };
-    try r.run("timer", "timer-wheel/schedule+cancel", 0, &wctx, WheelCtx.call);
+    try r.run("timer", "timer-wheel/schedule+cancel", 0, &wctx, WheelCtx.call, null);
 
     var nat_buf: [70000]u8 = undefined;
     const super = buildTcp(&nat_buf, 64000, 5);
     var nctx: NatCtx = .{ .data = super, .partial = false };
-    try r.run("nat", "nat/rewrite-64k-full-csum", 0, &nctx, NatCtx.call);
+    try r.run("nat", "nat/rewrite-64k-full-csum", 0, &nctx, NatCtx.call, NatCtx.digest);
     nctx.partial = true;
-    try r.run("nat", "nat/rewrite-64k-partial-csum", 0, &nctx, NatCtx.call);
+    try r.run("nat", "nat/rewrite-64k-partial-csum", 0, &nctx, NatCtx.call, NatCtx.digest);
 
     var seg_out: [2000]u8 = undefined;
     var sctx: SegmentCtx = .{ .data = super, .vh = gso.VirtioNetHdr.tcp(false, 20, 20, 1460, false), .out = &seg_out };
-    try r.run("gso", "gso/split-64k-mss1460", super.len, &sctx, SegmentCtx.call);
+    try r.run("gso", "gso/split-64k-mss1460", super.len, &sctx, SegmentCtx.call, SegmentCtx.digest);
 
     var co_pool = try pool.Pool.init(allocator, .{ .count = 128, .buffer_size = 70000 });
     defer co_pool.deinit();
@@ -273,8 +488,14 @@ pub fn runAll(allocator: std.mem.Allocator, io: std.Io, opts: Options) !u8 {
         s.* = buildTcp(seg_storage[i * 1500 ..][0..1500], 1460, 1 + @as(u32, @intCast(i)) * 1460);
     }
     var cctx: CoalesceCtx = .{ .p = &co_pool, .segments = segs };
-    try r.run("gso", "gro/coalesce-40x1460", 40 * 1500, &cctx, CoalesceCtx.call);
+    const coalesced_bytes: u64 = 40 * 1460;
+    const staged_bytes: u64 = 40 * 1500;
+    try r.run("gso", "gro/coalesce-40x1460", coalesced_bytes + staged_bytes, &cctx, CoalesceCtx.call, CoalesceCtx.digest);
 
+    if (r.identity_failures > 0) {
+        std.debug.print("{d} benchmark(s) produced non-identical output; refusing to report timings\n", .{r.identity_failures});
+        return 3;
+    }
     if (opts.json_path) |path| try writeJson(allocator, io, path, r.results.items);
     if (opts.markdown_path) |path| try writeMarkdown(allocator, io, path, r.results.items);
     if (opts.svg_path) |path| try writeSvg(allocator, io, path, r.results.items);
@@ -298,9 +519,9 @@ fn writeJson(allocator: std.mem.Allocator, io: std.Io, path: []const u8, results
     var out: std.Io.Writer.Allocating = .init(allocator);
     defer out.deinit();
     const w = &out.writer;
-    try w.print("{{\n  \"tool\": \"zeptun-bench\",\n  \"version\": \"{s}\",\n  \"zig\": \"{s}\",\n  \"arch\": \"{t}\",\n  \"os\": \"{t}\",\n  \"cpus\": {d},\n  \"results\": [\n", .{ zeptun.version, builtin.zig_version_string, builtin.cpu.arch, builtin.os.tag, sys.cpuCount() });
+    try w.print("{{\n  \"tool\": \"zeptun-bench\",\n  \"version\": \"{s}\",\n  \"zig\": \"{s}\",\n  \"arch\": \"{t}\",\n  \"os\": \"{t}\",\n  \"mode\": \"{s}\",\n  \"cpus\": {d},\n  \"results\": [\n", .{ zeptun.version, builtin.zig_version_string, builtin.cpu.arch, builtin.os.tag, BuildMode, sys.cpuCount() });
     for (results, 0..) |res, i| {
-        try w.print("    {{\"name\": \"{s}\", \"group\": \"{s}\", \"ns_per_op\": {d:.3}, \"ops_per_sec\": {d:.1}, \"mb_per_sec\": {d:.2}, \"bytes_per_op\": {d}}}{s}\n", .{ res.name, res.group, res.ns_per_op, res.ops_per_sec, res.mb_per_sec, res.bytes_per_op, if (i + 1 < results.len) "," else "" });
+        try w.print("    {{\"name\": \"{s}\", \"group\": \"{s}\", \"ns_per_op\": {d:.3}, \"ops_per_sec\": {d:.1}, \"mb_per_sec\": {d:.2}, \"bytes_per_op\": {d}, \"spread_pct\": {d:.1}, \"digest\": \"0x{x:0>16}\"}}{s}\n", .{ res.name, res.group, res.ns_per_op, res.ops_per_sec, res.mb_per_sec, res.bytes_per_op, res.ns_per_op_spread_pct, res.digest, if (i + 1 < results.len) "," else "" });
     }
     try w.writeAll("  ]\n}\n");
     try writeAll(allocator, io, path, out.written());
@@ -310,12 +531,12 @@ fn writeMarkdown(allocator: std.mem.Allocator, io: std.Io, path: []const u8, res
     var out: std.Io.Writer.Allocating = .init(allocator);
     defer out.deinit();
     const w = &out.writer;
-    try w.print("# zeptun-bench micro ({t}-{t}, {d} cpus)\n\n| benchmark | ns/op | ops/s | MB/s |\n|---|---:|---:|---:|\n", .{ builtin.cpu.arch, builtin.os.tag, sys.cpuCount() });
+    try w.print("# zeptun-bench micro ({t}-{t}, {s}, zig {s}, {d} cpus)\n\nnumbers are the minimum of the repetitions; higher spread means noisier host.\n\n| benchmark | ns/op | ops/s | MB/s | spread |\n|---|---:|---:|---:|---:|\n", .{ builtin.cpu.arch, builtin.os.tag, BuildMode, builtin.zig_version_string, sys.cpuCount() });
     for (results) |res| {
         if (res.bytes_per_op > 0) {
-            try w.print("| {s} | {d:.2} | {d:.0} | {d:.1} |\n", .{ res.name, res.ns_per_op, res.ops_per_sec, res.mb_per_sec });
+            try w.print("| {s} | {d:.2} | {d:.0} | {d:.1} | {d:.1}% |\n", .{ res.name, res.ns_per_op, res.ops_per_sec, res.mb_per_sec, res.ns_per_op_spread_pct });
         } else {
-            try w.print("| {s} | {d:.2} | {d:.0} | - |\n", .{ res.name, res.ns_per_op, res.ops_per_sec });
+            try w.print("| {s} | {d:.2} | {d:.0} | - | {d:.1}% |\n", .{ res.name, res.ns_per_op, res.ops_per_sec, res.ns_per_op_spread_pct });
         }
     }
     try writeAll(allocator, io, path, out.written());
