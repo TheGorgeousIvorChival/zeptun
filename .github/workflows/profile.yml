@@ -50,7 +50,7 @@ jobs:
 
       - name: build
         run: |
-          zig build -Doptimize=ReleaseFast -Denable-io-uring=false
+          zig build -Doptimize=ReleaseFast -Denable-io-uring=false -Dcpu=x86_64_v2
           ls -la zig-out/bin/
 
       - name: profile the engine under callgrind

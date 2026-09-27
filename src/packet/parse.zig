@@ -386,12 +386,24 @@ pub const FlowKey = extern struct {
     pad: [2]u8 = @splat(0),
 
     pub fn fromPacket(data: []const u8, pkt: Packet) FlowKey {
-        var k: FlowKey = .{ .proto = pkt.ip.next, .v6 = @intFromBool(pkt.ip.isV6()) };
         const al = pkt.ip.addrLen();
-        @memcpy(k.src[0..al], data[pkt.ip.srcOff()..][0..al]);
-        @memcpy(k.dst[0..al], data[pkt.ip.dstOff()..][0..al]);
+        const src = data[pkt.ip.srcOff()..][0..al];
+        const dst = data[pkt.ip.dstOff()..][0..al];
+        var k: FlowKey = undefined;
+        if (al == 4) {
+            @memcpy(k.src[0..4], src);
+            @memcpy(k.dst[0..4], dst);
+            @memset(k.src[4..16], 0);
+            @memset(k.dst[4..16], 0);
+        } else {
+            @memcpy(k.src[0..16], src);
+            @memcpy(k.dst[0..16], dst);
+        }
         k.src_port = pkt.srcPort();
         k.dst_port = pkt.dstPort();
+        k.proto = pkt.ip.next;
+        k.v6 = @intFromBool(pkt.ip.isV6());
+        k.pad = .{ 0, 0 };
         return k;
     }
 
