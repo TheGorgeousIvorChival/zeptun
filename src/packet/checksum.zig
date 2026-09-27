@@ -20,43 +20,34 @@ inline fn addCarry(a: u64, b: u64) u64 {
     return r[0] +% r[1];
 }
 
-fn sumWide(data: []const u8, initial: u64) u64 {
-    var a0: u64 = initial;
-    var a1: u64 = 0;
-    var a2: u64 = 0;
-    var a3: u64 = 0;
-    var i: usize = 0;
-    const n = data.len;
-    while (i + 32 <= n) : (i += 32) {
-        a0 = addCarry(a0, std.mem.readInt(u64, data[i..][0..8], native_endian));
-        a1 = addCarry(a1, std.mem.readInt(u64, data[i + 8 ..][0..8], native_endian));
-        a2 = addCarry(a2, std.mem.readInt(u64, data[i + 16 ..][0..8], native_endian));
-        a3 = addCarry(a3, std.mem.readInt(u64, data[i + 24 ..][0..8], native_endian));
-    }
-    var acc = addCarry(addCarry(a0, a1), addCarry(a2, a3));
-    while (i + 8 <= n) : (i += 8) {
-        acc = addCarry(acc, std.mem.readInt(u64, data[i..][0..8], native_endian));
-    }
-    return tail(data[i..], acc);
-}
-
 const split_threshold = 256;
 
 pub fn sumScalar(data: []const u8, initial: u64) u64 {
-    if (data.len >= split_threshold) return sumWide(data, initial);
-    var acc: u64 = initial;
+    var a0: u64 = initial;
+    var a1: u64 = 0;
     var i: usize = 0;
     const n = data.len;
-    while (i + 32 <= n) : (i += 32) {
-        acc = addCarry(acc, std.mem.readInt(u64, data[i..][0..8], native_endian));
-        acc = addCarry(acc, std.mem.readInt(u64, data[i + 8 ..][0..8], native_endian));
-        acc = addCarry(acc, std.mem.readInt(u64, data[i + 16 ..][0..8], native_endian));
-        acc = addCarry(acc, std.mem.readInt(u64, data[i + 24 ..][0..8], native_endian));
+    if (n >= split_threshold) {
+        var a2: u64 = 0;
+        var a3: u64 = 0;
+        while (i + 32 <= n) : (i += 32) {
+            a0 = addCarry(a0, std.mem.readInt(u64, data[i..][0..8], native_endian));
+            a1 = addCarry(a1, std.mem.readInt(u64, data[i + 8 ..][0..8], native_endian));
+            a2 = addCarry(a2, std.mem.readInt(u64, data[i + 16 ..][0..8], native_endian));
+            a3 = addCarry(a3, std.mem.readInt(u64, data[i + 24 ..][0..8], native_endian));
+        }
+        a0 = addCarry(addCarry(a0, a1), addCarry(a2, a3));
+    } else {
+        while (i + 16 <= n) : (i += 16) {
+            a0 = addCarry(a0, std.mem.readInt(u64, data[i..][0..8], native_endian));
+            a1 = addCarry(a1, std.mem.readInt(u64, data[i + 8 ..][0..8], native_endian));
+        }
+        a0 = addCarry(a0, a1);
     }
     while (i + 8 <= n) : (i += 8) {
-        acc = addCarry(acc, std.mem.readInt(u64, data[i..][0..8], native_endian));
+        a0 = addCarry(a0, std.mem.readInt(u64, data[i..][0..8], native_endian));
     }
-    return tail(data[i..], acc);
+    return tail(data[i..], a0);
 }
 
 inline fn tail(rest: []const u8, initial: u64) u64 {
