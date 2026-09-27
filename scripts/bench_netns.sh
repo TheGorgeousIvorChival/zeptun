@@ -29,6 +29,25 @@ mkdir -p "$OUT_DIR"
 OUT_DIR=$(realpath "$OUT_DIR")
 RESULTS="$OUT_DIR/results.jsonl"
 : > "$RESULTS"
+SUMMARY="$OUT_DIR/summary.md"
+CAPABILITY="$OUT_DIR/capability.md"
+: > "$RESULTS"
+
+tun_queues() {
+    n=0
+    for d in /sys/class/net/"$1"/queues/*; do
+        [ -d "$d" ] || continue
+        n=$((n + 1))
+    done
+    printf '%s\n' "$n"
+}
+
+engine_multiqueue() {
+    case "$1" in
+        zeptun-*|hev) return 0 ;;
+        *) return 1 ;;
+    esac
+}
 
 ns_setup
 for knob in "net.ipv4.tcp_tw_reuse=1" "net.ipv4.ip_local_port_range=1024 65000"; do
@@ -76,6 +95,8 @@ remove_routes() {
 start_engine() {
     engine=$1
     ENGINE_PIDS=""
+    QUEUES_ACTUAL=0
+    ENGINE_PROCS=1
     case "$engine" in
         zeptun-*)
             spec=${engine#zeptun-}
@@ -93,6 +114,7 @@ start_engine() {
             ENGINE_PIDS=$!
             TUN_NAME=zep0
             wait_tun || return 1
+            QUEUES_ACTUAL=$(tun_queues zep0)
             ;;
         tun2socks)
             [ -n "$TUN2SOCKS" ] || return 1
@@ -103,6 +125,7 @@ start_engine() {
             ip link set t2s0 up
             install_routes t2s0
             TUN_NAME=t2s0
+            QUEUES_ACTUAL=$(tun_queues t2s0)
             ;;
         singbox-*)
             [ -n "$SINGBOX" ] || return 1
@@ -113,6 +136,7 @@ start_engine() {
             for _ in $(seq 1 50); do ip -o link show sb0 2> /dev/null | grep -q UP && break; sleep 0.1; done
             install_routes sb0
             TUN_NAME=sb0
+            QUEUES_ACTUAL=$(tun_queues sb0)
             ;;
         hev)
             [ -n "$HEV" ] || return 1
@@ -125,14 +149,27 @@ start_engine() {
                 i=$((i + 1))
                 sleep 0.2
             done
+            ENGINE_PROCS=$QUEUES
             for _ in $(seq 1 50); do
                 ip -o link show hev0 2> /dev/null | grep -q UP && break
                 sleep 0.1
             done
             install_routes hev0
             TUN_NAME=hev0
+            QUEUES_ACTUAL=$(tun_queues hev0)
             ;;
     esac
+    if [ -z "${QUEUES_ACTUAL:-}" ] || [ "$QUEUES_ACTUAL" -eq 0 ] 2> /dev/null; then
+        printf "  %s: could not read queue count for %s, treating as 1\n" "$engine" "${TUN_NAME:-?}" >&2
+        QUEUES_ACTUAL=1
+    fi
+    if ! engine_multiqueue "$engine" && [ "$QUEUES_ACTUAL" -gt 1 ]; then
+        printf "  %s: multiqueue not supported by this engine\n" "$engine" >&2
+    fi
+    if [ "$QUEUES_ACTUAL" -lt "$QUEUES" ]; then
+        printf "  %s: got %s of %s requested queues\n" "$engine" "$QUEUES_ACTUAL" "$QUEUES" >&2
+    fi
+    MQ=$(engine_multiqueue "$engine" && echo 1 || echo 0)
     sleep 1
 }
 
@@ -186,6 +223,17 @@ for f in glob.glob(f"{out}/mon-{tag}-*.json"):
     pss += m.get("max_pss_kb", 0)
 print(f"{cpu:.1f} {rss} {pss}")
 PY
+}
+
+warmup_engine() {
+    WARMUP=${WARMUP:-2}
+    if [ -n "$IPERF3" ]; then
+        "$IPERF3" -c "$SERVER_ADDR" -p 5201 -t "$WARMUP" -P 2 -J > /dev/null 2> /dev/null || true
+    else
+        "$BENCH" tcp-client --connect "$SERVER_ADDR:5201" --seconds "$WARMUP" --streams 2 > /dev/null 2> /dev/null || true
+    fi
+    wait_port 5201 || true
+    sleep 1
 }
 
 run_scenario() {
@@ -252,51 +300,57 @@ run_scenario() {
     peak_pss=$3
     sleep "$SETTLE"
     set -- $(engine_memory)
-    printf '{"engine":"%s","scenario":"%s","rep":%s,"value":"%s","unit":"%s","cpu_pct":%s,"rss_kb":%s,"pss_kb":%s,"rss_after_kb":%s,"pss_after_kb":%s,"settle_s":%s,"mtu":%s,"queues":%s}\n' "$engine" "$scenario" "$rep" "$value" "$unit" "$cpu_pct" "$peak_rss" "$peak_pss" "$1" "$2" "$SETTLE" "$MTU" "$QUEUES" >> "$RESULTS"
-    printf "  %-18s %-12s rep %s: %s %s cpu %s%% rss %s KB, %s KB after %ss idle\n" "$engine" "$scenario" "$rep" "$value" "$unit" "$cpu_pct" "$peak_rss" "$1" "$SETTLE"
+    printf '{"engine":"%s","scenario":"%s","rep":%s,"value":"%s","unit":"%s","cpu_pct":%s,"rss_kb":%s,"pss_kb":%s,"rss_after_kb":%s,"pss_after_kb":%s,"settle_s":%s,"mtu":%s,"queues_requested":%s,"queues_actual":%s,"multiqueue":%s,"procs":%s}\n' "$engine" "$scenario" "$rep" "$value" "$unit" "$cpu_pct" "$peak_rss" "$peak_pss" "$1" "$2" "$SETTLE" "$MTU" "$QUEUES" "${QUEUES_ACTUAL:-1}" "$MQ" "$ENGINE_PROCS" >> "$RESULTS"
+    printf "  %-18s %-12s rep %s: %s %s cpu %s%% rss %s KB, %s KB after %ss idle, %s queue(s)\n" "$engine" "$scenario" "$rep" "$value" "$unit" "$cpu_pct" "$peak_rss" "$1" "$SETTLE" "${QUEUES_ACTUAL:-1}"
+}
+
+eligible=""
+for engine in $ENGINES; do
+    case "$engine" in
+        hev) [ -n "$HEV" ] || continue ;;
+        tun2socks) [ -n "$TUN2SOCKS" ] || continue ;;
+        singbox-*) [ -n "$SINGBOX" ] || continue ;;
+    esac
+    eligible="$eligible $engine"
+done
+
+engine_count=0
+for engine in $eligible; do engine_count=$((engine_count + 1)); done
+if [ "$engine_count" -eq 0 ]; then
+    printf "no engine had its binary available; nothing to compare\n" >&2
+    exit 1
+fi
+
+engine_at() {
+    want=$1
+    i=0
+    for w in $eligible; do
+        if [ "$i" -eq "$want" ]; then printf '%s\n' "$w"; return 0; fi
+        i=$((i + 1))
+    done
+    return 1
 }
 
 rep=1
 while [ "$rep" -le "$REPEAT" ]; do
-    for engine in $ENGINES; do
-        case "$engine" in
-            hev) [ -n "$HEV" ] || continue ;;
-            tun2socks) [ -n "$TUN2SOCKS" ] || continue ;;
-            singbox-*) [ -n "$SINGBOX" ] || continue ;;
-        esac
+    slot=0
+    while [ "$slot" -lt "$engine_count" ]; do
+        engine=$(engine_at $(((rep - 1 + slot) % engine_count)))
         printf "round %s engine %s\n" "$rep" "$engine"
         if ! start_engine "$engine"; then
             printf "  failed to start %s\n" "$engine"
             stop_engine "$engine"
+            slot=$((slot + 1))
             continue
         fi
+        warmup_engine
         for scenario in $SCENARIOS; do
             run_scenario "$engine" "$scenario" "$rep"
         done
         stop_engine "$engine"
+        slot=$((slot + 1))
     done
     rep=$((rep + 1))
 done
 
-python3 - "$RESULTS" "$OUT_DIR/summary.md" << 'PY'
-import json, statistics, sys
-rows = [json.loads(l) for l in open(sys.argv[1]) if l.strip()]
-groups = {}
-for r in rows:
-    groups.setdefault((r["engine"], r["scenario"]), []).append(r)
-lines = ["| engine | scenario | median | cpu % | max rss MB | rss after idle MB |", "|---|---|---:|---:|---:|---:|"]
-for (engine, scenario), rs in groups.items():
-    def num(v):
-        try:
-            return float(str(v).split()[0])
-        except ValueError:
-            return 0.0
-    vals = sorted(rs, key=lambda r: num(r["value"]))
-    mid = vals[len(vals) // 2]
-    cpu = statistics.median(r["cpu_pct"] for r in rs)
-    rss = max(r["rss_kb"] for r in rs) / 1024
-    after = max(r.get("rss_after_kb", 0) for r in rs) / 1024
-    lines.append(f"| {engine} | {scenario} | {mid['value']} {mid['unit']} | {cpu:.0f} | {rss:.1f} | {after:.1f} |")
-open(sys.argv[2], "w").write("\n".join(lines) + "\n")
-print("\n".join(lines))
-PY
+python3 "$SCRIPT_DIR/bench_summary.py" "$RESULTS" "$SUMMARY" "$CAPABILITY"
