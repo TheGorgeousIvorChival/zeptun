@@ -20,19 +20,24 @@ inline fn addCarry(a: u64, b: u64) u64 {
     return r[0] +% r[1];
 }
 
+inline fn addCarry128(a: u128, b: u128) u128 {
+    const r = @addWithOverflow(a, b);
+    return r[0] +% r[1];
+}
+
 const split_threshold = 256;
 
 pub fn sumScalar(data: []const u8, initial: u64) u64 {
     if (data.len < split_threshold) {
-        var s: u64 = initial;
+        var w: u128 = initial;
         var j: usize = 0;
         const m = data.len;
-        while (j + 32 <= m) : (j += 32) {
-            s = addCarry(s, std.mem.readInt(u64, data[j..][0..8], native_endian));
-            s = addCarry(s, std.mem.readInt(u64, data[j + 8 ..][0..8], native_endian));
-            s = addCarry(s, std.mem.readInt(u64, data[j + 16 ..][0..8], native_endian));
-            s = addCarry(s, std.mem.readInt(u64, data[j + 24 ..][0..8], native_endian));
+        while (j + 16 <= m) : (j += 16) {
+            const lo = std.mem.readInt(u64, data[j..][0..8], native_endian);
+            const hi = std.mem.readInt(u64, data[j + 8 ..][0..8], native_endian);
+            w = addCarry128(w, @as(u128, lo) | (@as(u128, hi) << 64));
         }
+        var s = addCarry(@as(u64, @truncate(w)), @as(u64, @truncate(w >> 64)));
         while (j + 8 <= m) : (j += 8) {
             s = addCarry(s, std.mem.readInt(u64, data[j..][0..8], native_endian));
         }
