@@ -23,6 +23,10 @@ on:
         description: Commit the charts to docs/bench
         type: boolean
         default: true
+      extra_args:
+        description: Extra zeptun arguments, for example -c /path/tuning.toml
+        type: string
+        default: ""
   schedule:
     - cron: "0 4 * * 0"
   push:
@@ -92,6 +96,7 @@ jobs:
           REPEAT: ${{ inputs.repeat || '2' }}
           QUEUES: '1'
           SETTLE: ${{ inputs.settle || '5' }}
+          ZEPTUN_ARGS: ${{ inputs.extra_args }}
           OUT_DIR: bench-results
         run: sh scripts/bench_netns.sh
 
@@ -108,6 +113,7 @@ jobs:
           REPEAT: ${{ inputs.repeat || '2' }}
           QUEUES: ${{ inputs.queues || '4' }}
           SETTLE: ${{ inputs.settle || '5' }}
+          ZEPTUN_ARGS: ${{ inputs.extra_args }}
           OUT_DIR: bench-results-mq
         run: sh scripts/bench_netns.sh
 
