@@ -129,6 +129,10 @@ const golden = std.StaticStringMap(u64).initComptime(.{
     .{ "checksum/simd/9000", 0x1dfd7c83a0580701 },
     .{ "checksum/scalar/65535", 0x6bb31eeb4ca62677 },
     .{ "checksum/simd/65535", 0x6bb31eeb4ca62677 },
+    .{ "parse/ip-only", 0xd6753cdc658ede03 },
+    .{ "parse/ip+tcp", 0xe9a10070233295ea },
+    .{ "parse/+flowkey", 0xbe6415f8c9743986 },
+    .{ "parse/flowkey-hash", 0xfa5f601550f1c802 },
     .{ "parse/ipv4-tcp+flowkey", 0x12402e5ea08ef373 },
     .{ "flow-table/lookup-60k", 0xa78fcef817dd7851 },
     .{ "flow-table/remove+insert-60k", 0xa78fcef817dd7851 },
@@ -189,6 +193,62 @@ const ParseCtx = struct {
         const p = parse.parse(c.data) catch unreachable;
         const k = parse.FlowKey.fromPacket(c.data, p);
         return mix(mix(mix(0x9a1e, @as(u64, p.l4_off)), @as(u64, p.payload_len)), k.hash());
+    }
+};
+
+const ParseIpCtx = struct {
+    data: []const u8,
+
+    fn call(c: *const ParseIpCtx) void {
+        const hdr = parse.parseIp(c.data) catch unreachable;
+        std.mem.doNotOptimizeAway(hdr.total_len);
+    }
+
+    fn digest(c: *const ParseIpCtx) u64 {
+        const hdr = parse.parseIp(c.data) catch unreachable;
+        return mix(0x1b1d, @as(u64, hdr.total_len) | (@as(u64, hdr.header_len) << 16) | (@as(u64, hdr.next) << 32));
+    }
+};
+
+const ParseFullCtx = struct {
+    data: []const u8,
+
+    fn call(c: *const ParseFullCtx) void {
+        const p = parse.parse(c.data) catch unreachable;
+        std.mem.doNotOptimizeAway(p.payload_len);
+    }
+
+    fn digest(c: *const ParseFullCtx) u64 {
+        const p = parse.parse(c.data) catch unreachable;
+        return mix(mix(0x2b2e, @as(u64, p.l4_off)), @as(u64, p.payload_len));
+    }
+};
+
+const FlowKeyCtx = struct {
+    data: []const u8,
+    key: parse.FlowKey = .{},
+
+    fn call(c: *FlowKeyCtx) void {
+        const p = parse.parse(c.data) catch unreachable;
+        c.key = parse.FlowKey.fromPacket(c.data, p);
+        std.mem.doNotOptimizeAway(c.key.src[0]);
+    }
+
+    fn digest(c: *FlowKeyCtx) u64 {
+        c.call();
+        return mixBytes(0x3c3f, std.mem.asBytes(&c.key));
+    }
+};
+
+const HashCtx = struct {
+    key: parse.FlowKey,
+
+    fn call(c: *const HashCtx) void {
+        std.mem.doNotOptimizeAway(c.key.hash());
+    }
+
+    fn digest(c: *const HashCtx) u64 {
+        return mix(0x4d40, c.key.hash());
     }
 };
 
@@ -371,6 +431,15 @@ pub fn runAll(allocator: std.mem.Allocator, io: std.Io, opts: Options) !u8 {
     var pkt_buf: [70000]u8 = undefined;
     const small_pkt = buildTcp(&pkt_buf, 1400, 1);
     const parse_ctx: ParseCtx = .{ .data = small_pkt };
+    var parse_ip_ctx: ParseIpCtx = .{ .data = small_pkt };
+    try r.run("parse", "parse/ip-only", 0, &parse_ip_ctx, ParseIpCtx.call, ParseIpCtx.digest);
+    var parse_full_ctx: ParseFullCtx = .{ .data = small_pkt };
+    try r.run("parse", "parse/ip+tcp", 0, &parse_full_ctx, ParseFullCtx.call, ParseFullCtx.digest);
+    var flowkey_ctx: FlowKeyCtx = .{ .data = small_pkt };
+    try r.run("parse", "parse/+flowkey", 0, &flowkey_ctx, FlowKeyCtx.call, FlowKeyCtx.digest);
+    const p2 = parse.parse(small_pkt) catch unreachable;
+    const hash_ctx: HashCtx = .{ .key = parse.FlowKey.fromPacket(small_pkt, p2) };
+    try r.run("parse", "parse/flowkey-hash", 0, &hash_ctx, HashCtx.call, HashCtx.digest);
     try r.run("parse", "parse/ipv4-tcp+flowkey", 0, &parse_ctx, ParseCtx.call, ParseCtx.digest);
 
     var ft = try table.FlowTable(u64).init(allocator, 65536);
