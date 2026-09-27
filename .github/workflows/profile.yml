@@ -70,7 +70,13 @@ jobs:
             $real "\$@"
           EOF
           chmod +x /tmp/cg/zeptun
+          cat > /tmp/cg/profile.toml <<'CFG'
+          [memory]
+          buffers_per_worker = 64
+          budget_bytes = 4194304
+          CFG
           ZEPTUN=/tmp/cg/zeptun \
+          ZEPTUN_ARGS="-c /tmp/cg/profile.toml" \
           BENCH=$(realpath zig-out/bin/zeptun-bench) \
           IPERF3=/usr/bin/iperf3 \
           ENGINES="$PROFILE_ENGINE" \
