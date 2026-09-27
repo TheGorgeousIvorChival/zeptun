@@ -982,7 +982,7 @@ pub fn Tcp(comptime W: type) type {
             if (!acceptable) {
                 if (f.rst) return;
                 if (f.ack and !f.syn) {
-                    const late_opts = if (th.header_len > 20) parse.parseTcpOptions(data[pkt.l4_off + 20 .. pkt.payload_off]) else no_tcp_options;
+                    const late_opts = if (th.header_len > 20) parse.parseTcpOptions(data[pkt.l4_off + 20 .. pkt.payload_off]) else parse.TcpOptions{};
                     if (!t.processAck(w, c, th, late_opts, payload_len)) return;
                 }
                 c.need_ack = true;
@@ -1004,7 +1004,7 @@ pub fn Tcp(comptime W: type) type {
                 return;
             }
             if (!f.ack) return;
-            const opts = if (th.header_len > 20) parse.parseTcpOptions(data[pkt.l4_off + 20 .. pkt.payload_off]) else no_tcp_options;
+            const opts = if (th.header_len > 20) parse.parseTcpOptions(data[pkt.l4_off + 20 .. pkt.payload_off]) else parse.TcpOptions{};
             if (c.ts_ok and opts.has_timestamp and seqLe(th.seq, c.rcv_nxt)) c.ts_recent = opts.ts_val;
             if (!t.processAck(w, c, th, opts, payload_len)) return;
             var off: u32 = pkt.payload_off;
@@ -1099,8 +1099,6 @@ pub fn Tcp(comptime W: type) type {
             w.wheel.cancel(&c.persist_timer);
             w.wheel.schedule(&c.life_timer, w.now() + w.cfg.stack.tcp_linger_ms);
         }
-
-        const no_tcp_options: parse.TcpOptions = .{};
 
         fn processAck(t: *Self, w: *W, c: *Conn, th: parse.Tcp, opts: parse.TcpOptions, payload_len: u32) bool {
             const ack = th.ack;
