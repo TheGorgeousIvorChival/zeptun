@@ -50,7 +50,7 @@ jobs:
 
       - name: build
         run: |
-          zig build -Doptimize=ReleaseFast
+          zig build -Doptimize=ReleaseFast -Denable-io-uring=false
           ls -la zig-out/bin/
 
       - name: profile the engine under callgrind
@@ -106,6 +106,12 @@ jobs:
             echo
             echo "== harness log tail =="
             tail -30 /tmp/cg/bench.log 2>/dev/null
+            echo
+            echo "== engine logs =="
+            for f in /tmp/cg/out/*.log; do
+              echo "--- $f ---"
+              tail -20 "$f" 2>/dev/null
+            done
           } > /tmp/cg/profile.txt 2>&1
           cat /tmp/cg/profile.txt | head -80
           exit 0
@@ -122,6 +128,9 @@ jobs:
           mkdir -p out
           cp /tmp/cg/profile.txt out/ 2>/dev/null || true
           cp /tmp/cg/bench.log out/ 2>/dev/null || true
+          for f in /tmp/cg/out/*.log; do
+            [ -f "$f" ] && cp "$f" "out/engine-$(basename "$f")" 2>/dev/null || true
+          done
           git add -A
           git -c user.name=github-actions[bot] \
               -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
