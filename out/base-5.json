@@ -1,0 +1,29 @@
+{
+  "tool": "zeptun-bench",
+  "version": "1.1.1",
+  "zig": "0.16.0",
+  "arch": "x86_64",
+  "os": "linux",
+  "cpus": 4,
+  "results": [
+    {"name": "checksum/scalar/64", "group": "checksum", "ns_per_op": 6.237, "ops_per_sec": 160329635.0, "mb_per_sec": 10261.10, "bytes_per_op": 64},
+    {"name": "checksum/simd/64", "group": "checksum", "ns_per_op": 6.069, "ops_per_sec": 164769356.7, "mb_per_sec": 10545.24, "bytes_per_op": 64},
+    {"name": "checksum/scalar/512", "group": "checksum", "ns_per_op": 53.738, "ops_per_sec": 18608849.5, "mb_per_sec": 9527.73, "bytes_per_op": 512},
+    {"name": "checksum/simd/512", "group": "checksum", "ns_per_op": 12.374, "ops_per_sec": 80816274.1, "mb_per_sec": 41377.93, "bytes_per_op": 512},
+    {"name": "checksum/scalar/1500", "group": "checksum", "ns_per_op": 170.787, "ops_per_sec": 5855230.4, "mb_per_sec": 8782.85, "bytes_per_op": 1500},
+    {"name": "checksum/simd/1500", "group": "checksum", "ns_per_op": 30.480, "ops_per_sec": 32808224.7, "mb_per_sec": 49212.34, "bytes_per_op": 1500},
+    {"name": "checksum/scalar/9000", "group": "checksum", "ns_per_op": 1045.714, "ops_per_sec": 956284.3, "mb_per_sec": 8606.56, "bytes_per_op": 9000},
+    {"name": "checksum/simd/9000", "group": "checksum", "ns_per_op": 127.322, "ops_per_sec": 7854130.7, "mb_per_sec": 70687.18, "bytes_per_op": 9000},
+    {"name": "checksum/scalar/65535", "group": "checksum", "ns_per_op": 7648.508, "ops_per_sec": 130744.5, "mb_per_sec": 8568.34, "bytes_per_op": 65535},
+    {"name": "checksum/simd/65535", "group": "checksum", "ns_per_op": 965.017, "ops_per_sec": 1036251.2, "mb_per_sec": 67910.72, "bytes_per_op": 65535},
+    {"name": "parse/ipv4-tcp+flowkey", "group": "parse", "ns_per_op": 44.778, "ops_per_sec": 22332208.6, "mb_per_sec": 0.00, "bytes_per_op": 0},
+    {"name": "flow-table/lookup-60k", "group": "flow", "ns_per_op": 24.076, "ops_per_sec": 41534864.2, "mb_per_sec": 0.00, "bytes_per_op": 0},
+    {"name": "flow-table/remove+insert-60k", "group": "flow", "ns_per_op": 53.976, "ops_per_sec": 18526613.0, "mb_per_sec": 0.00, "bytes_per_op": 0},
+    {"name": "pool/get+put-x16", "group": "pool", "ns_per_op": 66.810, "ops_per_sec": 14967717.9, "mb_per_sec": 0.00, "bytes_per_op": 0},
+    {"name": "timer-wheel/schedule+cancel", "group": "timer", "ns_per_op": 7.206, "ops_per_sec": 138770135.3, "mb_per_sec": 0.00, "bytes_per_op": 0},
+    {"name": "nat/rewrite-64k-full-csum", "group": "nat", "ns_per_op": 59.643, "ops_per_sec": 16766400.8, "mb_per_sec": 0.00, "bytes_per_op": 0},
+    {"name": "nat/rewrite-64k-partial-csum", "group": "nat", "ns_per_op": 56.461, "ops_per_sec": 17711294.5, "mb_per_sec": 0.00, "bytes_per_op": 0},
+    {"name": "gso/split-64k-mss1460", "group": "gso", "ns_per_op": 1940.463, "ops_per_sec": 515341.0, "mb_per_sec": 33002.44, "bytes_per_op": 64040},
+    {"name": "gro/coalesce-40x1460", "group": "gso", "ns_per_op": 4212.871, "ops_per_sec": 237367.8, "mb_per_sec": 14242.07, "bytes_per_op": 60000}
+  ]
+}

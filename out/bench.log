@@ -1,0 +1,150 @@
+checksum/scalar/64                               6.37 ns/op      156997069 ops/s    10047.8 MB/s
+checksum/simd/64                                 6.23 ns/op      160488575 ops/s    10271.3 MB/s
+checksum/scalar/512                             53.76 ns/op       18602706 ops/s     9524.6 MB/s
+checksum/simd/512                               12.40 ns/op       80618099 ops/s    41276.5 MB/s
+checksum/scalar/1500                           176.26 ns/op        5673323 ops/s     8510.0 MB/s
+checksum/simd/1500                              30.67 ns/op       32608786 ops/s    48913.2 MB/s
+checksum/scalar/9000                          1049.48 ns/op         952852 ops/s     8575.7 MB/s
+checksum/simd/9000                             128.15 ns/op        7803165 ops/s    70228.5 MB/s
+checksum/scalar/65535                         7648.36 ns/op         130747 ops/s     8568.5 MB/s
+checksum/simd/65535                            970.72 ns/op        1030168 ops/s    67512.0 MB/s
+parse/ipv4-tcp+flowkey                          45.77 ns/op       21850124 ops/s
+flow-table/lookup-60k                           25.14 ns/op       39770215 ops/s
+flow-table/remove+insert-60k                    55.39 ns/op       18052626 ops/s
+pool/get+put-x16                                66.66 ns/op       15001129 ops/s
+timer-wheel/schedule+cancel                      7.22 ns/op      138534025 ops/s
+nat/rewrite-64k-full-csum                       60.46 ns/op       16541114 ops/s
+nat/rewrite-64k-partial-csum                    56.72 ns/op       17628992 ops/s
+gso/split-64k-mss1460                         1934.57 ns/op         516910 ops/s    33102.9 MB/s
+gro/coalesce-40x1460                          4235.13 ns/op         236120 ops/s    14167.2 MB/s
+checksum/scalar/64                               6.25 ns/op      160020752 ops/s    10241.3 MB/s
+checksum/simd/64                                 6.07 ns/op      164880000 ops/s    10552.3 MB/s
+checksum/scalar/512                             53.76 ns/op       18602756 ops/s     9524.6 MB/s
+checksum/simd/512                               12.37 ns/op       80808868 ops/s    41374.1 MB/s
+checksum/scalar/1500                           171.39 ns/op        5834569 ops/s     8751.9 MB/s
+checksum/simd/1500                              30.66 ns/op       32615926 ops/s    48923.9 MB/s
+checksum/scalar/9000                          1045.55 ns/op         956436 ops/s     8607.9 MB/s
+checksum/simd/9000                             127.53 ns/op        7841358 ops/s    70572.2 MB/s
+checksum/scalar/65535                         7646.94 ns/op         130771 ops/s     8570.1 MB/s
+checksum/simd/65535                            959.78 ns/op        1041905 ops/s    68281.2 MB/s
+parse/ipv4-tcp+flowkey                          44.78 ns/op       22332729 ops/s
+flow-table/lookup-60k                           24.16 ns/op       41392714 ops/s
+flow-table/remove+insert-60k                    53.95 ns/op       18536244 ops/s
+pool/get+put-x16                                66.28 ns/op       15087092 ops/s
+timer-wheel/schedule+cancel                      7.34 ns/op      136221743 ops/s
+nat/rewrite-64k-full-csum                       59.62 ns/op       16773528 ops/s
+nat/rewrite-64k-partial-csum                    56.38 ns/op       17737255 ops/s
+gso/split-64k-mss1460                         2147.68 ns/op         465620 ops/s    29818.3 MB/s
+gro/coalesce-40x1460                          4227.43 ns/op         236550 ops/s    14193.0 MB/s
+checksum/scalar/64                               6.23 ns/op      160477651 ops/s    10270.6 MB/s
+checksum/simd/64                                 6.06 ns/op      164915449 ops/s    10554.6 MB/s
+checksum/scalar/512                             53.73 ns/op       18610006 ops/s     9528.3 MB/s
+checksum/simd/512                               12.37 ns/op       80837358 ops/s    41388.7 MB/s
+checksum/scalar/1500                           171.31 ns/op        5837224 ops/s     8755.8 MB/s
+checksum/simd/1500                              30.56 ns/op       32722309 ops/s    49083.5 MB/s
+checksum/scalar/9000                          1045.93 ns/op         956091 ops/s     8604.8 MB/s
+checksum/simd/9000                             127.50 ns/op        7843354 ops/s    70590.2 MB/s
+checksum/scalar/65535                         7650.57 ns/op         130709 ops/s     8566.0 MB/s
+checksum/simd/65535                            961.83 ns/op        1039687 ops/s    68135.9 MB/s
+parse/ipv4-tcp+flowkey                          45.70 ns/op       21882683 ops/s
+flow-table/lookup-60k                           24.18 ns/op       41353967 ops/s
+flow-table/remove+insert-60k                    54.50 ns/op       18348616 ops/s
+pool/get+put-x16                                66.26 ns/op       15091513 ops/s
+timer-wheel/schedule+cancel                      7.28 ns/op      137284647 ops/s
+nat/rewrite-64k-full-csum                       60.22 ns/op       16604416 ops/s
+nat/rewrite-64k-partial-csum                    56.50 ns/op       17700171 ops/s
+gso/split-64k-mss1460                         2089.95 ns/op         478481 ops/s    30641.9 MB/s
+gro/coalesce-40x1460                          4345.05 ns/op         230147 ops/s    13808.8 MB/s
+checksum/scalar/64                               6.24 ns/op      160337258 ops/s    10261.6 MB/s
+checksum/simd/64                                 6.06 ns/op      164896797 ops/s    10553.4 MB/s
+checksum/scalar/512                             53.79 ns/op       18591993 ops/s     9519.1 MB/s
+checksum/simd/512                               12.37 ns/op       80811335 ops/s    41375.4 MB/s
+checksum/scalar/1500                           171.53 ns/op        5829942 ops/s     8744.9 MB/s
+checksum/simd/1500                              30.58 ns/op       32698146 ops/s    49047.2 MB/s
+checksum/scalar/9000                          1045.49 ns/op         956490 ops/s     8608.4 MB/s
+checksum/simd/9000                             127.38 ns/op        7850643 ops/s    70655.8 MB/s
+checksum/scalar/65535                         7646.37 ns/op         130781 ops/s     8570.7 MB/s
+checksum/simd/65535                            951.15 ns/op        1051360 ops/s    68900.9 MB/s
+parse/ipv4-tcp+flowkey                          45.73 ns/op       21866888 ops/s
+flow-table/lookup-60k                           24.31 ns/op       41141047 ops/s
+flow-table/remove+insert-60k                    54.88 ns/op       18220754 ops/s
+pool/get+put-x16                                66.26 ns/op       15093044 ops/s
+timer-wheel/schedule+cancel                      7.30 ns/op      137075721 ops/s
+nat/rewrite-64k-full-csum                       60.15 ns/op       16623879 ops/s
+nat/rewrite-64k-partial-csum                    56.63 ns/op       17657051 ops/s
+gso/split-64k-mss1460                         2136.39 ns/op         468080 ops/s    29975.8 MB/s
+gro/coalesce-40x1460                          4210.25 ns/op         237516 ops/s    14250.9 MB/s
+checksum/scalar/64                               6.24 ns/op      160329635 ops/s    10261.1 MB/s
+checksum/simd/64                                 6.07 ns/op      164769357 ops/s    10545.2 MB/s
+checksum/scalar/512                             53.74 ns/op       18608850 ops/s     9527.7 MB/s
+checksum/simd/512                               12.37 ns/op       80816274 ops/s    41377.9 MB/s
+checksum/scalar/1500                           170.79 ns/op        5855230 ops/s     8782.8 MB/s
+checksum/simd/1500                              30.48 ns/op       32808225 ops/s    49212.3 MB/s
+checksum/scalar/9000                          1045.71 ns/op         956284 ops/s     8606.6 MB/s
+checksum/simd/9000                             127.32 ns/op        7854131 ops/s    70687.2 MB/s
+checksum/scalar/65535                         7648.51 ns/op         130744 ops/s     8568.3 MB/s
+checksum/simd/65535                            965.02 ns/op        1036251 ops/s    67910.7 MB/s
+parse/ipv4-tcp+flowkey                          44.78 ns/op       22332209 ops/s
+flow-table/lookup-60k                           24.08 ns/op       41534864 ops/s
+flow-table/remove+insert-60k                    53.98 ns/op       18526613 ops/s
+pool/get+put-x16                                66.81 ns/op       14967718 ops/s
+timer-wheel/schedule+cancel                      7.21 ns/op      138770135 ops/s
+nat/rewrite-64k-full-csum                       59.64 ns/op       16766401 ops/s
+nat/rewrite-64k-partial-csum                    56.46 ns/op       17711295 ops/s
+gso/split-64k-mss1460                         1940.46 ns/op         515341 ops/s    33002.4 MB/s
+gro/coalesce-40x1460                          4212.87 ns/op         237368 ops/s    14242.1 MB/s
+zeptun-bench micro: x86_64-linux mode=ReleaseFast zig=0.16.0 cpus=4 reps=1 min_ns=600000000
+identity parse/ip-only                            0xd6753cdc658ede03 ok
+parse/ip-only                                   13.88 ns/op       72059732 ops/s  [spread 0.0%]
+identity parse/ip+tcp                             0xe9a10070233295ea ok
+parse/ip+tcp                                    24.70 ns/op       40477762 ops/s  [spread 0.0%]
+identity parse/+flowkey                           0x32c06f6d6bab1034 ok
+parse/+flowkey                                  24.89 ns/op       40170084 ops/s  [spread 0.0%]
+identity parse/flowkey-hash                       0x3063ac45aaf34ed8 ok
+parse/flowkey-hash                               0.31 ns/op     3203536115 ops/s  [spread 0.0%]
+identity parse/ipv4-tcp+flowkey                   0x12402e5ea08ef373 ok
+parse/ipv4-tcp+flowkey                          26.55 ns/op       37661088 ops/s  [spread 0.0%]
+zeptun-bench micro: x86_64-linux mode=ReleaseFast zig=0.16.0 cpus=4 reps=1 min_ns=600000000
+identity parse/ip-only                            0xd6753cdc658ede03 ok
+parse/ip-only                                   13.85 ns/op       72181490 ops/s  [spread 0.0%]
+identity parse/ip+tcp                             0xe9a10070233295ea ok
+parse/ip+tcp                                    24.68 ns/op       40521949 ops/s  [spread 0.0%]
+identity parse/+flowkey                           0x32c06f6d6bab1034 ok
+parse/+flowkey                                  24.80 ns/op       40325237 ops/s  [spread 0.0%]
+identity parse/flowkey-hash                       0x3063ac45aaf34ed8 ok
+parse/flowkey-hash                               0.31 ns/op     3212797405 ops/s  [spread 0.0%]
+identity parse/ipv4-tcp+flowkey                   0x12402e5ea08ef373 ok
+parse/ipv4-tcp+flowkey                          26.66 ns/op       37506215 ops/s  [spread 0.0%]
+zeptun-bench micro: x86_64-linux mode=ReleaseFast zig=0.16.0 cpus=4 reps=1 min_ns=600000000
+identity parse/ip-only                            0xd6753cdc658ede03 ok
+parse/ip-only                                   13.94 ns/op       71757208 ops/s  [spread 0.0%]
+identity parse/ip+tcp                             0xe9a10070233295ea ok
+parse/ip+tcp                                    24.68 ns/op       40516145 ops/s  [spread 0.0%]
+identity parse/+flowkey                           0x32c06f6d6bab1034 ok
+parse/+flowkey                                  24.71 ns/op       40472453 ops/s  [spread 0.0%]
+identity parse/flowkey-hash                       0x3063ac45aaf34ed8 ok
+parse/flowkey-hash                               0.31 ns/op     3212016508 ops/s  [spread 0.0%]
+identity parse/ipv4-tcp+flowkey                   0x12402e5ea08ef373 ok
+parse/ipv4-tcp+flowkey                          26.45 ns/op       37810419 ops/s  [spread 0.0%]
+zeptun-bench micro: x86_64-linux mode=ReleaseFast zig=0.16.0 cpus=4 reps=1 min_ns=600000000
+identity parse/ip-only                            0xd6753cdc658ede03 ok
+parse/ip-only                                   13.93 ns/op       71779636 ops/s  [spread 0.0%]
+identity parse/ip+tcp                             0xe9a10070233295ea ok
+parse/ip+tcp                                    24.70 ns/op       40478323 ops/s  [spread 0.0%]
+identity parse/+flowkey                           0x32c06f6d6bab1034 ok
+parse/+flowkey                                  24.70 ns/op       40477932 ops/s  [spread 0.0%]
+identity parse/flowkey-hash                       0x3063ac45aaf34ed8 ok
+parse/flowkey-hash                               0.31 ns/op     3212761604 ops/s  [spread 0.0%]
+identity parse/ipv4-tcp+flowkey                   0x12402e5ea08ef373 ok
+parse/ipv4-tcp+flowkey                          26.50 ns/op       37741577 ops/s  [spread 0.0%]
+zeptun-bench micro: x86_64-linux mode=ReleaseFast zig=0.16.0 cpus=4 reps=1 min_ns=600000000
+identity parse/ip-only                            0xd6753cdc658ede03 ok
+parse/ip-only                                   13.86 ns/op       72140007 ops/s  [spread 0.0%]
+identity parse/ip+tcp                             0xe9a10070233295ea ok
+parse/ip+tcp                                    24.73 ns/op       40432548 ops/s  [spread 0.0%]
+identity parse/+flowkey                           0x32c06f6d6bab1034 ok
+parse/+flowkey                                  24.74 ns/op       40420328 ops/s  [spread 0.0%]
+identity parse/flowkey-hash                       0x3063ac45aaf34ed8 ok
+parse/flowkey-hash                               0.32 ns/op     3135065034 ops/s  [spread 0.0%]
+identity parse/ipv4-tcp+flowkey                   0x12402e5ea08ef373 ok
+parse/ipv4-tcp+flowkey                          26.42 ns/op       37851192 ops/s  [spread 0.0%]

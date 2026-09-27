@@ -1,0 +1,16 @@
+{
+  "tool": "zeptun-bench",
+  "version": "1.1.1",
+  "zig": "0.16.0",
+  "arch": "x86_64",
+  "os": "linux",
+  "mode": "ReleaseFast",
+  "cpus": 4,
+  "results": [
+    {"name": "parse/ip-only", "group": "parse", "ns_per_op": 13.932, "ops_per_sec": 71779635.9, "mb_per_sec": 0.00, "bytes_per_op": 0, "spread_pct": 0.0, "digest": "0xd6753cdc658ede03"},
+    {"name": "parse/ip+tcp", "group": "parse", "ns_per_op": 24.705, "ops_per_sec": 40478322.8, "mb_per_sec": 0.00, "bytes_per_op": 0, "spread_pct": 0.0, "digest": "0xe9a10070233295ea"},
+    {"name": "parse/+flowkey", "group": "parse", "ns_per_op": 24.705, "ops_per_sec": 40477932.1, "mb_per_sec": 0.00, "bytes_per_op": 0, "spread_pct": 0.0, "digest": "0x32c06f6d6bab1034"},
+    {"name": "parse/flowkey-hash", "group": "parse", "ns_per_op": 0.311, "ops_per_sec": 3212761603.6, "mb_per_sec": 0.00, "bytes_per_op": 0, "spread_pct": 0.0, "digest": "0x3063ac45aaf34ed8"},
+    {"name": "parse/ipv4-tcp+flowkey", "group": "parse", "ns_per_op": 26.496, "ops_per_sec": 37741576.7, "mb_per_sec": 0.00, "bytes_per_op": 0, "spread_pct": 0.0, "digest": "0x12402e5ea08ef373"}
+  ]
+}
