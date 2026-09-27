@@ -126,6 +126,9 @@ pub const Segmenter = struct {
     tcp_flags: u8,
     ip_id: u16,
     fill_csum: bool,
+    hdr_csum: u16 = 0,
+    prev_total: u16 = 0,
+    prev_id: u16 = 0,
 
     pub fn init(pkt: []const u8, h: VirtioNetHdr, fill_csum: bool) Error!Segmenter {
         const p = parse.parse(pkt) catch return error.Malformed;
@@ -188,7 +191,19 @@ pub const Segmenter = struct {
         if (s.ip.version == 4) {
             parse.setBe16(out, 2, @intCast(total));
             parse.setBe16(out, 4, s.ip_id +% @as(u16, @truncate(s.index)));
-            checksum.ipv4Header(out[0..s.ip.header_len]);
+            const new_total = checksum.readNative16(out[2..4]);
+            const new_id = checksum.readNative16(out[4..6]);
+            if (first) {
+                checksum.ipv4Header(out[0..s.ip.header_len]);
+                s.hdr_csum = checksum.readNative16(out[10..12]);
+            } else {
+                var hc = checksum.update16(s.hdr_csum, s.prev_total, new_total);
+                hc = checksum.update16(hc, s.prev_id, new_id);
+                checksum.writeNative16(out[10..12], hc);
+                s.hdr_csum = hc;
+            }
+            s.prev_total = new_total;
+            s.prev_id = new_id;
         } else {
             parse.setBe16(out, 4, @intCast(total - 40));
         }
