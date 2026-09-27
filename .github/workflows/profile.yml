@@ -1,0 +1,139 @@
+name: profile
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenarios:
+        description: Scenarios to profile
+        default: "tcp-up-1"
+        required: false
+      seconds:
+        description: Seconds per scenario
+        default: "3"
+        required: false
+      engine:
+        description: Engine to profile
+        default: "zeptun-userspace"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: profile-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ZIG_VERSION: 0.16.0
+
+jobs:
+  callgrind:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+
+      - name: install tools
+        run: sudo apt-get update && sudo apt-get install -y valgrind iperf3 build-essential python3
+
+      - name: allow unprivileged namespaces
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sudo modprobe tun || true
+
+      - name: build
+        run: |
+          zig build -Doptimize=ReleaseFast -Denable-io-uring=false
+          ls -la zig-out/bin/
+
+      - name: profile the engine under callgrind
+        env:
+          PROFILE_SCENARIOS: ${{ inputs.scenarios || 'tcp-up-1' }}
+          PROFILE_SECONDS: ${{ inputs.seconds || '3' }}
+          PROFILE_ENGINE: ${{ inputs.engine || 'zeptun-userspace' }}
+        run: |
+          set -eu
+          real=$(realpath zig-out/bin/zeptun)
+          rm -rf /tmp/cg && mkdir -p /tmp/cg
+          cat > /tmp/cg/zeptun <<EOF
+          #!/bin/sh
+          exec valgrind --tool=callgrind \\
+            --callgrind-out-file=/tmp/cg/cg.out.%p \\
+            --cache-sim=no --branch-sim=no \\
+            $real "\$@"
+          EOF
+          chmod +x /tmp/cg/zeptun
+          cat > /tmp/cg/profile.toml <<'CFG'
+          [memory]
+          buffers_per_worker = 64
+          budget_bytes = 4194304
+          CFG
+          ZEPTUN=/tmp/cg/zeptun \
+          ZEPTUN_ARGS="-c /tmp/cg/profile.toml" \
+          BENCH=$(realpath zig-out/bin/zeptun-bench) \
+          IPERF3=/usr/bin/iperf3 \
+          ENGINES="$PROFILE_ENGINE" \
+          SCENARIOS="$PROFILE_SCENARIOS" \
+          DURATION="$PROFILE_SECONDS" \
+          REPEAT=1 SETTLE=1 QUEUES=1 MTU=8500 \
+          OUT_DIR=/tmp/cg/out \
+          sh scripts/bench_netns.sh > /tmp/cg/bench.log 2>&1 || true
+          echo "--- callgrind files ---"
+          ls -la /tmp/cg/cg.out.* 2>/dev/null || echo "none produced"
+
+      - name: annotate
+        if: always()
+        run: |
+          set +e
+          biggest=$(ls -S /tmp/cg/cg.out.* 2>/dev/null | head -1)
+          {
+            echo "scenarios: ${{ inputs.scenarios || 'tcp-up-1' }}"
+            echo "engine: ${{ inputs.engine || 'zeptun-userspace' }}"
+            echo "seconds: ${{ inputs.seconds || '3' }}"
+            echo
+            if [ -n "$biggest" ]; then
+              echo "== callgrind file: $biggest =="
+              echo
+              echo "== top self cost functions =="
+              callgrind_annotate --threshold=92 "$biggest" 2>/dev/null | sed -n '/Ir *file:function/,/^$/p' | head -60
+              echo
+              echo "== top inclusive cost functions =="
+              callgrind_annotate --inclusive=yes --threshold=98 "$biggest" 2>/dev/null | sed -n '/Ir *file:function/,/^$/p' | head -40
+            else
+              echo "no callgrind output was produced"
+            fi
+            echo
+            echo "== harness log tail =="
+            tail -30 /tmp/cg/bench.log 2>/dev/null
+            echo
+            echo "== engine logs =="
+            for f in /tmp/cg/out/*.log; do
+              echo "--- $f ---"
+              tail -20 "$f" 2>/dev/null
+            done
+          } > /tmp/cg/profile.txt 2>&1
+          cat /tmp/cg/profile.txt | head -80
+          exit 0
+
+      - name: publish
+        if: always()
+        env:
+          REPORT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          dest="$RUNNER_TEMP/report"
+          rm -rf "$dest"; git init -q "$dest"; cd "$dest"
+          git checkout -q -b ci-profile
+          mkdir -p out
+          cp /tmp/cg/profile.txt out/ 2>/dev/null || true
+          cp /tmp/cg/bench.log out/ 2>/dev/null || true
+          for f in /tmp/cg/out/*.log; do
+            [ -f "$f" ] && cp "$f" "out/engine-$(basename "$f")" 2>/dev/null || true
+          done
+          git add -A
+          git -c user.name=github-actions[bot] \
+              -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
+              commit -q -m "callgrind profile for $GITHUB_SHA"
+          git push --force -q "https://x-access-token:${REPORT_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-profile
