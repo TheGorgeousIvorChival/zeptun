@@ -2,6 +2,11 @@ name: micro-report
 
 on:
   workflow_dispatch:
+    inputs:
+      args:
+        description: Extra arguments passed to the micro benchmark
+        default: "--min-ms 600 --reps 5"
+        required: false
   push:
     branches: [bench/hardened]
     paths:
@@ -33,7 +38,7 @@ jobs:
       - name: run micro benchmarks
         run: |
           set +e
-          zig build bench -Doptimize=ReleaseFast -- --min-ms 600 --reps 5 2>&1 | tee "$RUNNER_TEMP/bench.log"
+          zig build bench -Doptimize=ReleaseFast -- ${{ inputs.args || '--min-ms 600 --reps 5' }} 2>&1 | tee "$RUNNER_TEMP/bench.log"
           printf 'bench_exit=%s\n' "${PIPESTATUS[0]}" | tee -a "$RUNNER_TEMP/bench.log"
           exit 0
 
