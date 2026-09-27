@@ -31,7 +31,11 @@ jobs:
           version: ${{ env.ZIG_VERSION }}
 
       - name: run micro benchmarks
-        run: zig build bench -Doptimize=ReleaseFast -- --min-ms 600 --reps 5
+        run: |
+          set +e
+          zig build bench -Doptimize=ReleaseFast -- --min-ms 600 --reps 5 2>&1 | tee "$RUNNER_TEMP/bench.log"
+          printf 'bench_exit=%s\n' "${PIPESTATUS[0]}" | tee -a "$RUNNER_TEMP/bench.log"
+          exit 0
 
       - name: summary
         if: always()
@@ -49,6 +53,7 @@ jobs:
           cd "$dest"
           git checkout -q -b ci-micro
           mkdir -p out
+          cp "$RUNNER_TEMP/bench.log" out/ 2> /dev/null || true
           cp "$GITHUB_WORKSPACE/zig-out/bench/micro.md" out/ 2> /dev/null || true
           cp "$GITHUB_WORKSPACE/zig-out/bench/micro.json" out/ 2> /dev/null || true
           printf 'sha %s\n' "$GITHUB_SHA" > out/sha.txt
