@@ -117,6 +117,10 @@ const Runner = struct {
 const golden = std.StaticStringMap(u64).initComptime(.{
     .{ "checksum/scalar/64", 0x6e6710fba79cafa3 },
     .{ "checksum/simd/64", 0x6e6710fba79cafa3 },
+    .{ "checksum/scalar/128", 0x61785d06f4c3202a },
+    .{ "checksum/simd/128", 0x61785d06f4c3202a },
+    .{ "checksum/scalar/256", 0x2337fa02a75ca72c },
+    .{ "checksum/simd/256", 0x2337fa02a75ca72c },
     .{ "checksum/scalar/512", 0xc97c051422450f08 },
     .{ "checksum/simd/512", 0xc97c051422450f08 },
     .{ "checksum/scalar/1500", 0x1d92ce84cc9dc8b4 },
@@ -353,7 +357,7 @@ pub fn runAll(allocator: std.mem.Allocator, io: std.Io, opts: Options) !u8 {
     defer r.results.deinit(allocator);
     var prng = std.Random.DefaultPrng.init(0xbe7c);
     const rand = prng.random();
-    const sizes = [_]usize{ 64, 512, 1500, 9000, 65535 };
+    const sizes = [_]usize{ 64, 128, 256, 512, 1500, 9000, 65535 };
     const data = try allocator.alloc(u8, 65536);
     defer allocator.free(data);
     rand.bytes(data);

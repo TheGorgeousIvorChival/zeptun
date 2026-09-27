@@ -21,6 +21,14 @@ inline fn addCarry(a: u64, b: u64) u64 {
 }
 
 pub fn sumScalar(data: []const u8, initial: u64) u64 {
+    if (data.len < split_threshold) {
+        var acc: u64 = initial;
+        var i: usize = 0;
+        while (i + 8 <= data.len) : (i += 8) {
+            acc = addCarry(acc, std.mem.readInt(u64, data[i..][0..8], native_endian));
+        }
+        return tail(data[i..], acc);
+    }
     var a0: u64 = initial;
     var a1: u64 = 0;
     var a2: u64 = 0;
@@ -39,6 +47,8 @@ pub fn sumScalar(data: []const u8, initial: u64) u64 {
     }
     return tail(data[i..], acc);
 }
+
+const split_threshold = 256;
 
 inline fn tail(rest: []const u8, initial: u64) u64 {
     var acc = initial;
