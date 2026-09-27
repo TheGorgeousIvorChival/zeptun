@@ -9,6 +9,7 @@ def parse(path):
     calls = defaultdict(int)
     cur_fn = None
     pending_cfn = None
+    skip_next_cost = False
     names = {}
     fn_re = re.compile(r"^(?:c?fn)=\((\d+)\)(?:\s+(.*))?$")
     calls_re = re.compile(r"^calls=(\d+)")
@@ -31,10 +32,14 @@ def parse(path):
                 if c:
                     calls[pending_cfn] += int(c.group(1))
                     pending_cfn = None
+                    skip_next_cost = True
                     continue
-            if line and (line[0].isdigit() or line[0] in "+-*") and cur_fn is not None:
+            if line and (line[0].isdigit() or line[0] in "+-*"):
                 parts = line.split()
-                if len(parts) >= 2:
+                if len(parts) >= 2 and cur_fn is not None:
+                    if skip_next_cost:
+                        skip_next_cost = False
+                        continue
                     try:
                         self_ir[cur_fn] += int(parts[1])
                     except ValueError:
