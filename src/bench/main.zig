@@ -11,7 +11,7 @@ const addr = zeptun.addr;
 const usage =
     \\usage: zeptun-bench <command> [options]
     \\
-    \\  micro [--json F] [--markdown F] [--svg F] [--baseline F] [--max-regression PCT] [--filter S] [--min-ms N]
+    \\  micro [--json F] [--markdown F] [--svg F] [--baseline F] [--max-regression PCT] [--filter S] [--min-ms N] [--reps N] [--update-golden] [--allow-debug]
     \\  tcp-server --listen ADDR:PORT
     \\  tcp-client --connect ADDR:PORT [--streams N] [--seconds S] [--reverse] [--mbps N] [--json F]
     \\  udp-server --listen ADDR:PORT [--echo]
@@ -83,6 +83,9 @@ pub fn main(init: std.process.Init) !u8 {
             .max_regression_pct = if (a.value("--max-regression")) |v| std.fmt.parseFloat(f64, v) catch 15.0 else 15.0,
             .filter = a.value("--filter"),
             .min_ns = @as(u64, try a.int(u32, "--min-ms", 300)) * std.time.ns_per_ms,
+            .reps = try a.int(u32, "--reps", 5),
+            .update_golden = a.flag("--update-golden"),
+            .allow_debug = a.flag("--allow-debug"),
         });
     }
     if (std.mem.eql(u8, cmd, "tcp-server")) {
