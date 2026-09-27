@@ -43,6 +43,11 @@ jobs:
       - name: install tools
         run: sudo apt-get update && sudo apt-get install -y valgrind iperf3 build-essential python3
 
+      - name: allow unprivileged namespaces
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sudo modprobe tun || true
+
       - name: build
         run: |
           zig build -Doptimize=ReleaseFast
