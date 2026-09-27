@@ -1,0 +1,59 @@
+name: micro-report
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [bench/hardened]
+    paths:
+      - "src/packet/**"
+      - "src/flow/**"
+      - "src/bench/**"
+      - "build.zig"
+      - ".github/workflows/micro-report.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: micro-report-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ZIG_VERSION: 0.16.0
+
+jobs:
+  report:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+
+      - name: run micro benchmarks
+        run: zig build bench -Doptimize=ReleaseFast -- --min-ms 600 --reps 5
+
+      - name: summary
+        if: always()
+        run: cat zig-out/bench/micro.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: publish to ci-micro branch
+        if: always()
+        env:
+          REPORT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          dest="$RUNNER_TEMP/report"
+          rm -rf "$dest"
+          git init -q "$dest"
+          cd "$dest"
+          git checkout -q -b ci-micro
+          mkdir -p out
+          cp "$GITHUB_WORKSPACE/zig-out/bench/micro.md" out/ 2> /dev/null || true
+          cp "$GITHUB_WORKSPACE/zig-out/bench/micro.json" out/ 2> /dev/null || true
+          printf 'sha %s\n' "$GITHUB_SHA" > out/sha.txt
+          git add -A
+          git -c user.name=github-actions[bot] \
+              -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
+              commit -q -m "micro results for $GITHUB_SHA"
+          git push --force -q "https://x-access-token:${REPORT_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-micro
