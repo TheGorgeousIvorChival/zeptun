@@ -1,0 +1,32 @@
+round 1 engine zeptun-userspace
+  zeptun-userspace: could not read queue count for zep0, treating as 1
+  zeptun-userspace   rr           rep 1: 5348 tps p50=184us p99=222us p99.9=256us  cpu 62.9% rss 33336 KB, 33336 KB after 1s idle, 1 queue(s)
+  zeptun-userspace   rr-8x1k      rep 1: 13078 tps p50=592us p99=888us p99.9=1424us  cpu 98.9% rss 33396 KB, 33396 KB after 1s idle, 1 queue(s)
+  zeptun-userspace   crr          rep 1: 1244 tps p50=792us p99=976us p99.9=1376us  cpu 61.7% rss 34308 KB, 34308 KB after 1s idle, 1 queue(s)
+# Benchmark results
+
+Engines are grouped by the number of TUN queues they actually received, so a
+single-queue engine is never compared against a multi-queue engine inside one table.
+
+> Only 1 round(s) per cell; treat differences under ~10% as noise.
+
+
+## TUN queues: 1
+
+| engine | scenario | median | rounds | spread | cpu % | max rss MB | rss after idle MB |
+|---|---|---:|---:|---:|---:|---:|---:|
+| zeptun-userspace | crr | 1244 tps p50=792us p99=976us p99.9=1376us | 1 | 0.0% | 62 | 33.5 | 33.5 |
+| zeptun-userspace | rr | 5348 tps p50=184us p99=222us p99.9=256us | 1 | 0.0% | 63 | 32.6 | 32.6 |
+| zeptun-userspace | rr-8x1k | 13078 tps p50=592us p99=888us p99.9=1424us | 1 | 0.0% | 99 | 32.6 | 32.6 |
+
+## Throughput by engine (best tier each engine reached)
+
+| engine | queues | scenario | median |
+|---|---:|---|---:|
+| zeptun-userspace | 1 | crr | 1244 tps p50=792us p99=976us p99.9=1376us |
+| zeptun-userspace | 1 | rr | 5348 tps p50=184us p99=222us p99.9=256us |
+| zeptun-userspace | 1 | rr-8x1k | 13078 tps p50=592us p99=888us p99.9=1424us |
+| engine | multiqueue | queues requested | queues actual | processes |
+|---|---|---:|---:|---:|
+| zeptun-userspace | yes | 1 | 1 | 1 |
+

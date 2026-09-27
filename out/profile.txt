@@ -1,0 +1,227 @@
+scenarios: rr rr-8x1k crr
+engine: zeptun-userspace
+seconds: 4
+
+== callgrind file: /tmp/cg/cg.out.3022 ==
+
+== per call costs ==
+total self Ir: 421,651,323
+
+== by total self cost ==
+       self Ir   share         calls   Ir/call  function
+--------------------------------------------------------------------------------------------------------
+    48,383,348  11.47%       143,375     337.5  stack.stack.deliver__anon_14407
+    31,208,525   7.40%       124,810     250.0  stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).sendSegment
+    30,823,591   7.31%       119,709     257.5  engine.Worker(io.linux_loop.Loop).flushOutput
+    27,022,215   6.41%       138,383     195.3  stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).processAck
+    23,072,345   5.47%       119,708     192.7  io.linux_loop.Loop.run
+    21,184,590   5.02%       119,707     177.0  engine.Worker(io.linux_loop.Loop).iterate
+    20,945,076   4.97%       353,363      59.3  memcpy
+    20,789,327   4.93%       143,375     145.0  packet.parse.parse
+    16,637,257   3.95%       412,312      40.4  io.epoll.Impl(io.linux_loop.Loop).attempt
+    14,260,967   3.38%       143,370      99.5  packet.parse.parseTcpOptions
+    13,065,489   3.10%       257,116      50.8  io.epoll.Impl(io.linux_loop.Loop).submit
+    12,039,283   2.86%       124,812      96.5  engine.Worker(io.linux_loop.Loop).transmitParts
+    11,183,289   2.65%       143,375      78.0  packet.parse.parseIp
+    11,004,174   2.61%       101,867     108.0  stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).consumeRx
+     9,906,000   2.35%        56,610     175.0  device.linux.Queue(engine.Worker(io.linux_loop.Loop)).onRead
+     9,522,152   2.26%       203,735      46.7  stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).kickWrite
+     8,697,558   2.06%       362,387      24.0  packet.pool.Pool.take
+     8,502,540   2.02%       143,372      59.3  flow.table.Table(packet.parse.FlowKey,stack.tcp.Tcp(engine.Worker(
+     8,097,307   1.92%       118,437      68.4  stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).appendRx
+     7,885,625   1.87%       143,375      55.0  stack.stack.dispatch__anon_13650
+     7,884,575   1.87%       315,383      25.0  io.epoll.Impl(io.linux_loop.Loop).state
+     7,113,565   1.69%        83,689      85.0  stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).onUpstreamReadabl
+     5,960,032   1.41%       177,365      33.6  flow.timeouts.Wheel.schedule
+     5,576,864   1.32%        83,689      66.6  stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).upstreamData
+     4,435,517   1.05%        83,689      53.0  stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).startRead
+     4,262,882   1.01%        96,883      44.0  stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).onUpstreamSend
+     3,610,312   0.86%       119,708      30.2  flow.timeouts.Wheel.advance__anon_13470
+     3,603,738   0.85%        86,766      41.5  device.linux.Queue(engine.Worker(io.linux_loop.Loop)).deliver
+     3,591,240   0.85%       119,708      30.0  engine.Worker(io.linux_loop.Loop).pollSources
+     3,454,236   0.82%       124,812      27.7  device.linux.Queue(engine.Worker(io.linux_loop.Loop)).finishSlot
+
+== by cost per call, among functions called at least 1000 times ==
+       self Ir         calls   Ir/call  function
+--------------------------------------------------------------------------------------------------------
+    48,383,348       143,375     337.5  stack.stack.deliver__anon_14407
+    30,823,591       119,709     257.5  engine.Worker(io.linux_loop.Loop).flushOutput
+    31,208,525       124,810     250.0  stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).sendSegment
+    27,022,215       138,383     195.3  stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).processAck
+    23,072,345       119,708     192.7  io.linux_loop.Loop.run
+    21,184,590       119,707     177.0  engine.Worker(io.linux_loop.Loop).iterate
+     9,906,000        56,610     175.0  device.linux.Queue(engine.Worker(io.linux_loop.Loop)).onRead
+    20,789,327       143,375     145.0  packet.parse.parse
+       643,407         4,987     129.0  handler.handler.Handler(engine.Worker(io.linux_loop.Loop)).dialTcp
+       553,647         4,987     111.0  stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).tryFree
+    11,004,174       101,867     108.0  stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).consumeRx
+       513,657         4,987     103.0  flow.table.Table(packet.parse.FlowKey,stack.tcp.Tcp(engine.Worker(
+    14,260,967       143,370      99.5  packet.parse.parseTcpOptions
+    12,039,283       124,812      96.5  engine.Worker(io.linux_loop.Loop).transmitParts
+     7,113,565        83,689      85.0  stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).onUpstreamReadabl
+       418,824         4,986      84.0  handler.handler.Handler(engine.Worker(io.linux_loop.Loop)).openFre
+       822,010         9,958      82.5  handler.handler.Handler(engine.Worker(io.linux_loop.Loop)).progres
+       398,883         4,987      80.0  handler.handler.Handler(engine.Worker(io.linux_loop.Loop)).finish
+    11,183,289       143,375      78.0  packet.parse.parseIp
+       379,012         4,987      76.0  handler.handler.Handler(engine.Worker(io.linux_loop.Loop)).openSoc
+       344,310         4,988      69.0  handler.handler.Handler(engine.Worker(io.linux_loop.Loop)).refill
+     8,097,307       118,437      68.4  stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).appendRx
+     5,576,864        83,689      66.6  stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).upstreamData
+       314,432         4,987      63.1  engine.Worker(io.linux_loop.Loop).onDialDone
+     1,255,837        19,931      63.0  handler.handler.Handler(engine.Worker(io.linux_loop.Loop)).onDial
+       309,179         4,987      62.0  flow.table.Table(packet.parse.FlowKey,stack.tcp.Tcp(engine.Worker(
+     8,502,540       143,372      59.3  flow.table.Table(packet.parse.FlowKey,stack.tcp.Tcp(engine.Worker(
+    20,945,076       353,363      59.3  memcpy
+     7,885,625       143,375      55.0  stack.stack.dispatch__anon_13650
+       269,294         4,987      54.0  handler.handler.Handler(engine.Worker(io.linux_loop.Loop)).notePro
+
+
+== top self cost functions ==
+Ir                   file:function
+--------------------------------------------------------------------------------
+30,502,171 ( 7.23%)  src/stack/tcp.zig:stack.stack.deliver__anon_14407
+25,336,232 ( 6.01%)  src/stack/tcp.zig:engine.Worker(io.linux_loop.Loop).flushOutput
+22,058,055 ( 5.23%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).processAck [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+20,945,076 ( 4.97%)  /home/runner/work/_temp/54ac72f9-2211-4407-9a9f-f91658848716/zig-x86_64-linux-0.16.0/lib/compiler_rt/memcpy.zig:memcpy [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+19,002,269 ( 4.51%)  src/io/epoll.zig:io.linux_loop.Loop.run
+18,495,369 ( 4.39%)  src/packet/parse.zig:packet.parse.parse [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+17,397,445 ( 4.13%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).sendSegment [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+13,677,513 ( 3.24%)  src/packet/parse.zig:packet.parse.parseTcpOptions [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+13,117,056 ( 3.11%)  src/io/epoll.zig:io.epoll.Impl(io.linux_loop.Loop).attempt [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+11,922,858 ( 2.83%)  src/flow/timeouts.zig:engine.Worker(io.linux_loop.Loop).iterate
+11,442,007 ( 2.71%)  src/io/epoll.zig:io.epoll.Impl(io.linux_loop.Loop).submit [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+10,179,670 ( 2.41%)  src/packet/parse.zig:packet.parse.parseIp [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 9,133,475 ( 2.17%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).consumeRx [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 8,697,558 ( 2.06%)  src/packet/pool.zig:packet.pool.Pool.take [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 8,446,473 ( 2.00%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).kickWrite [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 7,884,575 ( 1.87%)  src/io/epoll.zig:io.epoll.Impl(io.linux_loop.Loop).state [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 7,110,364 ( 1.69%)  src/engine.zig:engine.Worker(io.linux_loop.Loop).iterate [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 6,738,625 ( 1.60%)  src/stack/stack.zig:stack.stack.dispatch__anon_13650 [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 6,045,508 ( 1.43%)  src/device/linux.zig:device.linux.Queue(engine.Worker(io.linux_loop.Loop)).onRead [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 5,960,032 ( 1.41%)  src/flow/timeouts.zig:flow.timeouts.Wheel.schedule [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 5,905,698 ( 1.40%)  src/packet/parse.zig:stack.stack.deliver__anon_14407
+ 5,536,139 ( 1.31%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).appendRx [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 5,491,640 ( 1.30%)  src/packet/checksum.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).sendSegment
+ 5,220,708 ( 1.24%)  src/device/linux.zig:engine.Worker(io.linux_loop.Loop).transmitParts
+ 4,948,174 ( 1.17%)  src/flow/table.zig:flow.table.Table(packet.parse.FlowKey,stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).Conn,flow.table.FlowKeyContext).find [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 4,937,651 ( 1.17%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).onUpstreamReadable [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 4,874,741 ( 1.16%)  src/stack/stack.zig:stack.stack.deliver__anon_14407 [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 4,268,139 ( 1.01%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).startRead [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 4,069,114 ( 0.97%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).onUpstreamSend [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 3,947,803 ( 0.94%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).upstreamData [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 3,784,814 ( 0.90%)  src/engine.zig:engine.Worker(io.linux_loop.Loop).flushOutput [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 3,619,548 ( 0.86%)  src/engine.zig:engine.Worker(io.linux_loop.Loop).transmitParts [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 3,410,994 ( 0.81%)  src/packet/parse.zig:flow.table.Table(packet.parse.FlowKey,stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).Conn,flow.table.FlowKeyContext).find
+ 3,327,783 ( 0.79%)  src/flow/timeouts.zig:flow.timeouts.Wheel.advance__anon_13470 [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 3,255,034 ( 0.77%)  /home/runner/work/_temp/54ac72f9-2211-4407-9a9f-f91658848716/zig-x86_64-linux-0.16.0/lib/std/mem.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).sendSegment
+ 3,112,408 ( 0.74%)  src/engine.zig:engine.Worker(io.linux_loop.Loop).pollSources [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 2,938,520 ( 0.70%)  src/flow/table.zig:stack.stack.deliver__anon_14407
+ 2,452,614 ( 0.58%)  src/device/linux.zig:device.linux.Queue(engine.Worker(io.linux_loop.Loop)).deliver [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 2,415,667 ( 0.57%)  src/flow/timeouts.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).processAck
+ 2,368,740 ( 0.56%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).pullOoo [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 2,318,183 ( 0.55%)  src/packet/pool.zig:stack.stack.deliver__anon_14407
+ 2,298,324 ( 0.55%)  src/device/linux.zig:device.linux.Queue(engine.Worker(io.linux_loop.Loop)).finishSlot [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 2,293,958 ( 0.54%)  /home/runner/work/_temp/54ac72f9-2211-4407-9a9f-f91658848716/zig-x86_64-linux-0.16.0/lib/std/mem.zig:packet.parse.parse
+ 2,274,490 ( 0.54%)  src/device/linux.zig:device.linux.Queue(engine.Worker(io.linux_loop.Loop)).flush [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 2,035,036 ( 0.48%)  src/io/linux_loop.zig:io.linux_loop.Loop.run [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 1,689,549 ( 0.40%)  src/flow/timeouts.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).sendSegment
+ 1,623,482 ( 0.39%)  src/io/io.zig:io.epoll.Impl(io.linux_loop.Loop).submit
+ 1,622,530 ( 0.38%)  src/stack/ip.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).sendSegment
+ 1,596,564 ( 0.38%)  /home/runner/work/_temp/54ac72f9-2211-4407-9a9f-f91658848716/zig-x86_64-linux-0.16.0/lib/std/os/linux/x86_64.zig:io.epoll.Impl(io.linux_loop.Loop).attempt
+ 1,574,083 ( 0.37%)  src/packet/pool.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).processAck
+ 1,497,720 ( 0.36%)  src/packet/checksum.zig:packet.checksum.pseudo [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 1,392,489 ( 0.33%)  src/packet/pool.zig:device.linux.Queue(engine.Worker(io.linux_loop.Loop)).onRead
+ 1,361,364 ( 0.32%)  src/packet/pool.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).consumeRx
+ 1,317,871 ( 0.31%)  src/elastic.zig:stack.stack.deliver__anon_14407
+ 1,289,053 ( 0.31%)  /home/runner/work/_temp/54ac72f9-2211-4407-9a9f-f91658848716/zig-x86_64-linux-0.16.0/lib/std/os/linux.zig:io.epoll.Impl(io.linux_loop.Loop).attempt
+ 1,281,250 ( 0.30%)  src/io/sys.zig:io.sys.mapErrno__anon_4744 [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 1,248,100 ( 0.30%)  src/packet/gso.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).sendSegment
+ 1,123,327 ( 0.27%)  src/device/device.zig:engine.Worker(io.linux_loop.Loop).transmitParts
+
+== top inclusive cost functions ==
+Ir                    file:function
+--------------------------------------------------------------------------------
+421,368,988 (99.93%)  /home/runner/work/_temp/54ac72f9-2211-4407-9a9f-f91658848716/zig-x86_64-linux-0.16.0/lib/std/Thread.zig:Thread.LinuxThreadImpl.spawn__anon_23996.Instance.entryFn [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+421,368,972 (99.93%)  /home/runner/work/zeptun/zeptun/src/engine.zig:engine.Worker(io.linux_loop.Loop).run
+421,248,620 (99.90%)  src/engine.zig:engine.Worker(io.linux_loop.Loop).run [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+420,529,817 (99.73%)  src/engine.zig:engine.Worker(io.linux_loop.Loop).iterate [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+289,270,967 (68.60%)  /home/runner/work/zeptun/zeptun/src/io/linux_loop.zig:io.linux_loop.Loop.run
+285,200,891 (67.64%)  src/io/epoll.zig:io.linux_loop.Loop.run
+195,773,393 (46.43%)  /home/runner/work/zeptun/zeptun/src/device/linux.zig:device.linux.Queue(engine.Worker(io.linux_loop.Loop)).onRead
+176,897,897 (41.95%)  /home/runner/work/zeptun/zeptun/src/stack/stack.zig:stack.stack.dispatch__anon_13650
+175,750,897 (41.68%)  src/stack/stack.zig:stack.stack.dispatch__anon_13650 [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+137,039,656 (32.50%)  src/stack/stack.zig:stack.stack.deliver__anon_14407 [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+119,158,479 (28.26%)  src/stack/tcp.zig:stack.stack.deliver__anon_14407
+118,507,382 (28.11%)  src/device/linux.zig:device.linux.Queue(engine.Worker(io.linux_loop.Loop)).onRead [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+112,461,874 (26.67%)  src/device/linux.zig:device.linux.Queue(engine.Worker(io.linux_loop.Loop)).deliver [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+108,944,902 (25.84%)  src/engine.zig:device.linux.Queue(engine.Worker(io.linux_loop.Loop)).deliver
+102,873,130 (24.40%)  src/engine.zig:engine.Worker(io.linux_loop.Loop).flushOutput [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 95,111,300 (22.56%)  src/stack/tcp.zig:engine.Worker(io.linux_loop.Loop).flushOutput
+ 68,152,979 (16.16%)  src/engine.zig:device.linux.Queue(engine.Worker(io.linux_loop.Loop)).onRead
+ 54,445,183 (12.91%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).sendSegment [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 31,972,616 ( 7.58%)  /home/runner/work/zeptun/zeptun/src/packet/parse.zig:packet.parse.parse
+ 31,227,039 ( 7.41%)  /home/runner/work/zeptun/zeptun/src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).onUpstreamReadable
+ 29,678,658 ( 7.04%)  src/packet/parse.zig:packet.parse.parse [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 28,383,227 ( 6.73%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).processAck [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 27,042,476 ( 6.41%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).onUpstreamReadable [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 23,686,685 ( 5.62%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).appendRx [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 22,104,825 ( 5.24%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).upstreamData [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 21,037,617 ( 4.99%)  /home/runner/work/zeptun/zeptun/src/io/epoll.zig:io.epoll.Impl(io.linux_loop.Loop).submit
+ 20,945,076 ( 4.97%)  /home/runner/work/_temp/54ac72f9-2211-4407-9a9f-f91658848716/zig-x86_64-linux-0.16.0/lib/compiler_rt/memcpy.zig:memcpy [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 18,364,345 ( 4.36%)  /home/runner/work/zeptun/zeptun/src/engine.zig:engine.Worker(io.linux_loop.Loop).transmitParts
+ 17,574,417 ( 4.17%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).startRead [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 17,526,942 ( 4.16%)  src/io/epoll.zig:io.epoll.Impl(io.linux_loop.Loop).attempt [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 16,588,232 ( 3.93%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).kickWrite [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 16,503,844 ( 3.91%)  /home/runner/work/zeptun/zeptun/src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).onUpstreamSend
+ 16,310,076 ( 3.87%)  src/stack/tcp.zig:stack.tcp.Tcp(engine.Worker(io.linux_loop.Loop)).onUpstreamSend [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 14,260,967 ( 3.38%)  /home/runner/work/zeptun/zeptun/src/packet/parse.zig:packet.parse.parseTcpOptions
+ 13,677,513 ( 3.24%)  src/packet/parse.zig:packet.parse.parseTcpOptions [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+ 11,922,858 ( 2.83%)  src/flow/timeouts.zig:engine.Worker(io.linux_loop.Loop).iterate
+ 11,545,620 ( 2.74%)  src/device/linux.zig:engine.Worker(io.linux_loop.Loop).transmitParts
+ 11,183,289 ( 2.65%)  src/packet/parse.zig:packet.parse.parseIp [/home/runner/work/zeptun/zeptun/zig-out/bin/zeptun]
+
+== harness log tail ==
+  zeptun-userspace   rr           rep 1: 5348 tps p50=184us p99=222us p99.9=256us  cpu 62.9% rss 33336 KB, 33336 KB after 1s idle, 1 queue(s)
+  zeptun-userspace   rr-8x1k      rep 1: 13078 tps p50=592us p99=888us p99.9=1424us  cpu 98.9% rss 33396 KB, 33396 KB after 1s idle, 1 queue(s)
+  zeptun-userspace   crr          rep 1: 1244 tps p50=792us p99=976us p99.9=1376us  cpu 61.7% rss 34308 KB, 34308 KB after 1s idle, 1 queue(s)
+# Benchmark results
+
+Engines are grouped by the number of TUN queues they actually received, so a
+single-queue engine is never compared against a multi-queue engine inside one table.
+
+> Only 1 round(s) per cell; treat differences under ~10% as noise.
+
+
+## TUN queues: 1
+
+| engine | scenario | median | rounds | spread | cpu % | max rss MB | rss after idle MB |
+|---|---|---:|---:|---:|---:|---:|---:|
+| zeptun-userspace | crr | 1244 tps p50=792us p99=976us p99.9=1376us | 1 | 0.0% | 62 | 33.5 | 33.5 |
+| zeptun-userspace | rr | 5348 tps p50=184us p99=222us p99.9=256us | 1 | 0.0% | 63 | 32.6 | 32.6 |
+| zeptun-userspace | rr-8x1k | 13078 tps p50=592us p99=888us p99.9=1424us | 1 | 0.0% | 99 | 32.6 | 32.6 |
+
+## Throughput by engine (best tier each engine reached)
+
+| engine | queues | scenario | median |
+|---|---:|---|---:|
+| zeptun-userspace | 1 | crr | 1244 tps p50=792us p99=976us p99.9=1376us |
+| zeptun-userspace | 1 | rr | 5348 tps p50=184us p99=222us p99.9=256us |
+| zeptun-userspace | 1 | rr-8x1k | 13078 tps p50=592us p99=888us p99.9=1424us |
+| engine | multiqueue | queues requested | queues actual | processes |
+|---|---|---:|---:|---:|
+| zeptun-userspace | yes | 1 | 1 | 1 |
+
+
+== engine logs ==
+--- /tmp/cg/out/zeptun-userspace.log ---
+==3022== Callgrind, a call-graph generating cache profiler
+==3022== Copyright (C) 2002-2017, and GNU GPL'd, by Josef Weidendorfer et al.
+==3022== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info
+==3022== Command: /home/runner/work/zeptun/zeptun/zig-out/bin/zeptun run --tun zep0 --mtu 8500 --queues 1 --stack userspace --socks5 192.168.77.2:1080 --auto-route --log-level warn -c /tmp/cg/profile.toml
+==3022== 
+==3022== For interactive control, run 'callgrind_control -h'.
+==3022== 
+==3022== Events    : Ir
+==3022== Collected : 421651323
+==3022== 
+==3022== I   refs:      421,651,323
