@@ -415,7 +415,9 @@ pub fn runAll(allocator: std.mem.Allocator, io: std.Io, opts: Options) !u8 {
         s.* = buildTcp(seg_storage[i * 1500 ..][0..1500], 1460, 1 + @as(u32, @intCast(i)) * 1460);
     }
     var cctx: CoalesceCtx = .{ .p = &co_pool, .segments = segs };
-    try r.run("gso", "gro/coalesce-40x1460", 40 * 1500, &cctx, CoalesceCtx.call, CoalesceCtx.digest);
+    const coalesced_bytes: u64 = 40 * 1460;
+    const staged_bytes: u64 = 40 * 1500;
+    try r.run("gso", "gro/coalesce-40x1460", coalesced_bytes + staged_bytes, &cctx, CoalesceCtx.call, CoalesceCtx.digest);
 
     if (r.identity_failures > 0) {
         std.debug.print("{d} benchmark(s) produced non-identical output; refusing to report timings\n", .{r.identity_failures});

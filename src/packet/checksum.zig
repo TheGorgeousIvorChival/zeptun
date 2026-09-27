@@ -21,15 +21,19 @@ inline fn addCarry(a: u64, b: u64) u64 {
 }
 
 pub fn sumScalar(data: []const u8, initial: u64) u64 {
-    var acc: u64 = initial;
+    var a0: u64 = initial;
+    var a1: u64 = 0;
+    var a2: u64 = 0;
+    var a3: u64 = 0;
     var i: usize = 0;
     const n = data.len;
     while (i + 32 <= n) : (i += 32) {
-        acc = addCarry(acc, std.mem.readInt(u64, data[i..][0..8], native_endian));
-        acc = addCarry(acc, std.mem.readInt(u64, data[i + 8 ..][0..8], native_endian));
-        acc = addCarry(acc, std.mem.readInt(u64, data[i + 16 ..][0..8], native_endian));
-        acc = addCarry(acc, std.mem.readInt(u64, data[i + 24 ..][0..8], native_endian));
+        a0 = addCarry(a0, std.mem.readInt(u64, data[i..][0..8], native_endian));
+        a1 = addCarry(a1, std.mem.readInt(u64, data[i + 8 ..][0..8], native_endian));
+        a2 = addCarry(a2, std.mem.readInt(u64, data[i + 16 ..][0..8], native_endian));
+        a3 = addCarry(a3, std.mem.readInt(u64, data[i + 24 ..][0..8], native_endian));
     }
+    var acc = addCarry(addCarry(a0, a1), addCarry(a2, a3));
     while (i + 8 <= n) : (i += 8) {
         acc = addCarry(acc, std.mem.readInt(u64, data[i..][0..8], native_endian));
     }
