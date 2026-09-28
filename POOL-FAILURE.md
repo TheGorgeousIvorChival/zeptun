@@ -80,3 +80,48 @@ Measuring it first would need round-trip instrumentation, not an instruction
 count. The profile already shows where the user-space time goes for `rr`, and
 the answer is that 19.4 percent is event loop and syscall submission, with 2.5
 buffer acquisitions per packet against 1.25 in bulk transfer.
+
+
+## Follow up: the structural hypothesis is also dead
+
+The remaining idea was that the client handshake and the upstream SOCKS5
+connect are performed in series, so a new connection pays for two round trips
+where one would do. Reading the code says that is not what happens.
+
+`src/stack/tcp.zig:549` calls `w.handler.dialTcp(w, &c.up.dial, c.target, .tcp)`
+at the end of SYN handling, immediately after `sendSynAck`. The upstream
+connect to the proxy is therefore started on the initial SYN, in parallel with
+the client side handshake, not after the client is established. There is even
+an `earlyAccept` mode that sends the SYN-ACK before this point.
+
+The SOCKS5 handshake is pipelined as well. `handler.zig:894` sets
+`d.pipelined` from `s5.pipeline`, whose default is `.auto`, and `.auto` resolves
+to true when no username is configured, which is the case here. So the greeting
+and the CONNECT command already leave in a single write rather than two
+round trips.
+
+Both overlaps are already in place. There is no serial round trip to remove
+from connection setup, which means the remaining `rr` deficit against hev, 6982
+against 7401, is not explained by anything measured so far.
+
+## Where that leaves the request/response benchmark
+
+Three candidate explanations were tested and all three are refuted:
+
+1. the warm pool is too small, refuted by repetition, worth about 1 percent
+2. the upstream connect is serialised behind the client handshake, refuted in
+   the code, it is issued on the SYN
+3. the SOCKS5 greeting costs an extra round trip, refuted in the code, it is
+   pipelined by default
+
+A fourth was never a candidate because it was measured away earlier: user space
+instruction count. Removing 9.8 percent of them changed nothing end to end, so
+instructions are not the constraint.
+
+What remains untested is the kernel and syscall side, which is the one axis
+neither callgrind nor instruction counts can see, and which the `rr` profile
+points at: 19.4 percent of instructions in the event loop and syscall
+submission, and 2.5 buffer acquisitions per packet against 1.25 in bulk
+transfer. Whether zeptun performs more syscalls per connection than hev is the
+first thing worth measuring, and it needs kernel side counters rather than
+anything available here.
