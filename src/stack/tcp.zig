@@ -254,6 +254,7 @@ pub fn Tcp(comptime W: type) type {
         max_rto: u32,
         delack_ms: u32,
         congestion: config.Congestion,
+        last_room_update: u64 = 0,
 
         pub fn init(allocator: std.mem.Allocator, cfg: *const config.Config, max_conns: u32, buffer_size: u32, secret: u64) !Self {
             var wscale: u8 = 0;
@@ -385,7 +386,10 @@ pub fn Tcp(comptime W: type) type {
         }
 
         pub fn flush(t: *Self, w: *W) void {
-            t.updateRoom(w);
+            if (w.now() - t.last_room_update > 10_000_000) {
+                t.last_room_update = w.now();
+                t.updateRoom(w);
+            }
             if (t.starved_head != null and w.pool.available() > poolReserve(&w.pool)) t.wakeStarved(w);
             var rounds: u32 = 0;
             while (t.dirty_head != null and rounds < 4) : (rounds += 1) {
